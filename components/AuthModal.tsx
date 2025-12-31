@@ -243,6 +243,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
     }, 2000);
   };
 
+   const subtitleText = mode === 'login' ? '' : "Join the world's premium crypto exchange.";
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop with blur */}
@@ -270,7 +272,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                 <div className="mb-6 flex items-start justify-between gap-4">
                      <div>
                         <h2 className="text-2xl font-bold text-white mb-1">{mode === 'login' ? t('signIn') : t('createAccount')}</h2>
-                        <p className="text-deti-subtext text-sm">{mode === 'login' ? t('enterCredentials') : "Join the world's premium crypto exchange."}</p>
+                        {subtitleText && (
+                           <p className="text-deti-subtext text-sm">{subtitleText}</p>
+                        )}
                      </div>
                      <div className="flex items-center gap-3">
                         <select aria-label="Select language" value={language} onChange={(e) => setLanguage(e.target.value as any)} className="bg-white/5 text-xs text-white rounded-md px-2 py-1 border border-white/10">
@@ -389,22 +393,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                                  />
                                  <span className="font-medium select-none">{t('imNotRobot')}</span>
                               </label>
-                              {formError && <div className="text-xs text-red-400">{formError}</div>}
-                              {/* Helper copy for clarity */}
-                              <div className="w-full text-xs text-deti-subtext">{t('recaptchaHelper')}</div>
                            </div>
                         )}
 
-              {mode === 'login' && (
-                 <div className="flex justify-end">
-                    <a href="#" className="text-xs text-deti-primary hover:text-deti-secondary font-medium transition-colors">{t('forgotPassword')}</a>
-                 </div>
-              )}
+                       {formError && (
+                          <div className="mt-2 text-xs text-red-400">{formError}</div>
+                       )}
 
                        <button 
                          type="submit" 
                          disabled={loading || (mode === 'login' && !recaptchaChecked)}
-                         className="w-full py-3 bg-gradient-brand text-white rounded-xl font-bold shadow-glow hover:shadow-glow-gold transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                         className="w-full py-3 bg-gradient-brand text-white rounded-xl font-bold shadow-glow hover:shadow-glow-gold transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-2"
                        >
                           {loading ? <Loader2 className="animate-spin w-5 h-5" /> : (
                              <>
@@ -412,9 +411,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                              </>
                           )}
                        </button>
-                       {mode === 'login' && !recaptchaChecked && (
-                         <div className="mt-2 text-xs text-deti-subtext">{t('pleaseCheckToEnable')}</div>
-                       )}
+
+              {mode === 'login' && (
+                 <div className="flex justify-end mt-2">
+                    <a href="#" className="text-xs text-deti-primary hover:text-deti-secondary font-medium transition-colors">{t('forgotPassword')}</a>
+                 </div>
+              )}
            </form>
 
            <div className="relative my-6 text-center">

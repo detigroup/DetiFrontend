@@ -10,26 +10,27 @@ interface TopBarProps {
   onLoginClick: () => void;
   onKYCClick: () => void;
   onLogout?: () => void;
+  onHomeClick?: () => void;
 }
 
-export const TopBar: React.FC<TopBarProps> = React.memo(({ isDarkMode, toggleTheme, user, onLoginClick, onKYCClick, onLogout }) => {
+export const TopBar: React.FC<TopBarProps> = React.memo(({ isDarkMode, toggleTheme, user, onLoginClick, onKYCClick, onLogout, onHomeClick }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   return (
     <header className="h-16 lg:h-20 bg-deti-bg/60 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-4 lg:px-10 sticky top-0 z-40">
-      {/* Mobile: Logo/Title */}
-      <div className="flex items-center gap-3 lg:hidden">
-         <img src="https://i.postimg.cc/3Rj9YpjK/Group-83.png" alt="Logo" className="h-8 w-auto object-contain" />
+      {/* Logo + Home */}
+      <div className="flex items-center gap-3">
+         <img src="https://i.postimg.cc/3Rj9YpjK/Group-83.png" alt="Logo" className="h-10 w-auto object-contain" />
       </div>
 
       {/* Desktop Search */}
-      <div className="hidden lg:flex flex-1 max-w-lg">
+      <div className="hidden lg:flex flex-1 max-w-md">
         <div className="w-full relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-deti-subtext group-focus-within:text-deti-primary transition-colors" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-deti-subtext group-focus-within:text-deti-primary transition-colors" />
           <input 
             type="text" 
-            placeholder="Search coin, pair, or feature..." 
-            className="w-full bg-deti-card/50 border border-white/5 focus:border-deti-primary/50 text-white rounded-2xl pl-12 pr-4 py-3 outline-none transition-all placeholder-deti-subtext shadow-sm backdrop-blur-sm"
+            placeholder="Search..." 
+            className="w-full bg-white/5 dark:bg-white/5 border border-white/10 focus:border-deti-primary/50 text-white text-sm rounded-xl pl-9 pr-3 py-2.5 outline-none transition-all placeholder-deti-subtext hover:bg-white/10"
           />
         </div>
       </div>

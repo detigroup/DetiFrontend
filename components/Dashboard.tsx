@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { MarketPair, PortfolioAsset, CryptoNetwork } from '../types';
 import { COIN_NETWORKS } from '../constants';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
-  ArrowUpRight, MoreHorizontal, ArrowRightLeft, CreditCard, Wallet, BarChart2, RefreshCw,
-  ArrowDownLeft, X, ChevronDown, CheckCircle2, Copy, AlertCircle, RefreshCcw, Server, ShieldCheck, Plus, Lock, QrCode
+   ArrowUpRight, MoreHorizontal, ArrowRightLeft, CreditCard, Wallet, RefreshCw,
+   ArrowDownLeft, X, ChevronDown, CheckCircle2, Copy, AlertCircle, RefreshCcw, Server, ShieldCheck, Plus, Lock, QrCode
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -18,17 +17,6 @@ interface DashboardProps {
   onWithdraw: (symbol: string, amount: number) => void;
   onDeposit: (symbol: string, amount: number) => void;
 }
-
-const data = [
-  { name: 'Jan', value: 4000 },
-  { name: 'Feb', value: 3000 },
-  { name: 'Mar', value: 5000 },
-  { name: 'Apr', value: 2780 },
-  { name: 'May', value: 1890 },
-  { name: 'Jun', value: 2390 },
-  { name: 'Jul', value: 3490 },
-  { name: 'Aug', value: 5500 },
-];
 
 export const Dashboard: React.FC<DashboardProps> = React.memo(({ 
   assets, pairs, onNavigateToTrade, onFastSwap, isDarkMode = true,
@@ -50,7 +38,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({
   const [isGeneratingAddress, setIsGeneratingAddress] = useState(false);
 
   const totalBalance = assets.reduce((acc, curr) => acc + curr.valueUsd, 0);
-  const axisColor = isDarkMode ? '#808191' : '#64748B';
+   const axisColor = isDarkMode ? '#808191' : '#64748B'; // retained for future chart use
 
   const handleSwap = () => {
      if (!swapAmount) return;
@@ -124,13 +112,13 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({
     <div className="p-6 lg:p-8 space-y-8 max-w-[1600px] mx-auto animate-reveal-up relative">
       
       {/* Top Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         
         {/* My Balance Card */}
-        <div className="lg:col-span-4 bg-deti-card/60 backdrop-blur-xl rounded-3xl p-6 border border-white/5 shadow-card flex flex-col justify-between h-[360px] relative overflow-hidden group brand-lighting-box">
+        <div className="bg-deti-card/60 backdrop-blur-xl rounded-3xl p-6 border border-white/5 shadow-card flex flex-col justify-between h-[360px] relative overflow-hidden group brand-lighting-box">
           <div className="absolute top-0 right-0 w-64 h-64 bg-deti-primary/10 rounded-full blur-[80px] group-hover:bg-deti-primary/20 transition-all"></div>
           
-          <div className="relative z-10">
+          <div className="relative z-10 flex-1 flex flex-col">
              <div className="flex justify-between items-center mb-6">
                 <div>
                    <h2 className="text-deti-subtext text-sm font-medium uppercase tracking-wide">Total Balance</h2>
@@ -148,141 +136,52 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({
                 </button>
              </div>
 
-             <div className="grid grid-cols-2 gap-3 mb-6">
-                <button 
-                  onClick={() => openModal('deposit')}
-                  className="flex items-center justify-center gap-2 py-3 bg-white text-black rounded-xl font-bold hover:bg-gray-200 transition-colors shadow-lg"
-                >
-                   <ArrowUpRight size={18} className="rotate-180" /> Deposit
-                </button>
-                <button 
-                  onClick={() => openModal('withdraw')}
-                  className="flex items-center justify-center gap-2 py-3 bg-white/10 text-white border border-white/10 rounded-xl font-bold hover:bg-white/20 transition-colors"
-                >
-                   <ArrowUpRight size={18} /> Withdraw
-                </button>
+             {/* Quick Stats Row */}
+             <div className="grid grid-cols-3 gap-4 mb-6">
+                <div>
+                   <div className="text-xs text-deti-subtext mb-1">P&L (Today)</div>
+                   <div className="text-deti-success font-bold">+$1,240.50</div>
+                </div>
+                <div>
+                   <div className="text-xs text-deti-subtext mb-1">Margin Used</div>
+                   <div className="text-white font-bold">12.5%</div>
+                </div>
+                <div>
+                   <div className="text-xs text-deti-subtext mb-1">Open Orders</div>
+                   <div className="text-white font-bold">4</div>
+                </div>
+             </div>
+
+             {/* Action Buttons - Moved to bottom */}
+             <div className="mt-auto pt-6 border-t border-white/10">
+                <div className="grid grid-cols-4 gap-3">
+                   <button 
+                     onClick={() => openModal('deposit')}
+                     className="flex items-center justify-center gap-2 py-3 bg-deti-primary hover:bg-deti-primary/90 text-white rounded-xl font-bold transition-colors shadow-lg text-sm"
+                   >
+                      <ArrowUpRight size={16} className="rotate-180" /> Deposit
+                   </button>
+                   <button 
+                     onClick={() => openModal('withdraw')}
+                     className="flex items-center justify-center gap-2 py-3 bg-white/10 text-white border border-white/10 rounded-xl font-bold hover:bg-white/20 transition-colors text-sm"
+                   >
+                      <ArrowUpRight size={16} /> Withdraw
+                   </button>
+                   <button 
+                     onClick={() => openModal('deposit')}
+                     className="flex items-center justify-center gap-2 py-3 bg-white/10 text-white border border-white/10 rounded-xl font-bold hover:bg-white/20 transition-colors text-sm"
+                   >
+                      <ArrowRightLeft size={16} /> Transfer
+                   </button>
+                   <button 
+                     onClick={() => openModal('deposit')}
+                     className="flex items-center justify-center gap-2 py-3 bg-white/10 text-white border border-white/10 rounded-xl font-bold hover:bg-white/20 transition-colors text-sm"
+                   >
+                      <RefreshCw size={16} /> Convert
+                   </button>
+                </div>
              </div>
           </div>
-
-          {/* Quick Stats Row */}
-          <div className="relative z-10 grid grid-cols-3 gap-4 border-t border-white/10 pt-6">
-             <div>
-                <div className="text-xs text-deti-subtext mb-1">P&L (Today)</div>
-                <div className="text-deti-success font-bold">+$1,240.50</div>
-             </div>
-             <div>
-                <div className="text-xs text-deti-subtext mb-1">Margin Used</div>
-                <div className="text-white font-bold">12.5%</div>
-             </div>
-             <div>
-                <div className="text-xs text-deti-subtext mb-1">Open Orders</div>
-                <div className="text-white font-bold">4</div>
-             </div>
-          </div>
-        </div>
-
-        {/* Portfolio Analysis Chart */}
-        <div className="lg:col-span-5 bg-deti-card/60 backdrop-blur-xl rounded-3xl p-6 border border-white/5 shadow-card brand-lighting-box h-[360px] flex flex-col">
-           <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-white flex items-center gap-2">
-                 <BarChart2 className="text-deti-primary" size={20} /> Portfolio Analytics
-              </h3>
-              <div className="flex bg-deti-bg rounded-lg p-1 border border-white/5">
-                 {['1D', '1W', '1M', '1Y'].map((t, i) => (
-                    <button key={t} className={`px-3 py-1 text-xs font-bold rounded transition-colors ${i === 1 ? 'bg-white/10 text-white' : 'text-deti-subtext hover:text-white'}`}>{t}</button>
-                 ))}
-              </div>
-           </div>
-           
-           <div className="flex-1 w-full min-h-0">
-              <ResponsiveContainer width="100%" height="100%">
-                 <AreaChart data={data}>
-                    <defs>
-                       <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#F59E0B" stopOpacity={0}/>
-                       </linearGradient>
-                    </defs>
-                    <XAxis 
-                       dataKey="name" 
-                       axisLine={false} 
-                       tickLine={false} 
-                       tick={{fill: axisColor, fontSize: 10}} 
-                    />
-                    <YAxis 
-                       axisLine={false} 
-                       tickLine={false} 
-                       tick={{fill: axisColor, fontSize: 10}} 
-                       tickFormatter={(val) => `$${val}`}
-                    />
-                    <Tooltip 
-                       contentStyle={{backgroundColor: '#14151F', border: '1px solid #262935', borderRadius: '12px'}} 
-                       itemStyle={{color: '#fff'}}
-                    />
-                    <Area 
-                       type="monotone" 
-                       dataKey="value" 
-                       stroke="#F59E0B" 
-                       strokeWidth={3} 
-                       fillOpacity={1} 
-                       fill="url(#colorValue)" 
-                    />
-                 </AreaChart>
-              </ResponsiveContainer>
-           </div>
-        </div>
-
-        {/* Quick Trade / Action */}
-        <div className="lg:col-span-3 bg-gradient-to-b from-deti-card to-deti-bg border border-white/5 rounded-3xl p-6 shadow-card flex flex-col h-[360px] brand-lighting-box">
-           <h3 className="font-bold text-white mb-6 flex items-center gap-2">
-              <RefreshCw className="text-deti-secondary" size={20} /> Quick Convert
-           </h3>
-           
-           <div className="flex-1 flex flex-col justify-center space-y-4">
-              <div className="bg-deti-bg p-4 rounded-2xl border border-white/5">
-                 <div className="flex justify-between text-xs text-deti-subtext mb-2">
-                    <span>From</span>
-                    <span>Bal: 12,500</span>
-                 </div>
-                 <div className="flex justify-between items-center">
-                    <input 
-                      type="number" 
-                      placeholder="0.00" 
-                      value={swapAmount}
-                      onChange={(e) => setSwapAmount(e.target.value)}
-                      className="bg-transparent text-xl font-bold text-white outline-none w-full placeholder-white/20" 
-                    />
-                    <span className="flex items-center gap-1 font-bold text-white bg-white/10 px-2 py-1 rounded-lg">
-                       <div className="w-4 h-4 rounded-full bg-green-500"></div> USDT
-                    </span>
-                 </div>
-              </div>
-
-              <div className="flex justify-center -my-3 z-10">
-                 <div className="bg-deti-card border border-white/10 p-2 rounded-full text-white shadow-lg">
-                    <ArrowRightLeft size={16} className="rotate-90" />
-                 </div>
-              </div>
-
-              <div className="bg-deti-bg p-4 rounded-2xl border border-white/5">
-                 <div className="flex justify-between text-xs text-deti-subtext mb-2">
-                    <span>To (Estimate)</span>
-                 </div>
-                 <div className="flex justify-between items-center">
-                    <span className="text-xl font-bold text-white/50">{swapAmount ? (parseFloat(swapAmount) / 64000).toFixed(6) : '0.00'}</span>
-                    <span className="flex items-center gap-1 font-bold text-white bg-white/10 px-2 py-1 rounded-lg">
-                       <div className="w-4 h-4 rounded-full bg-orange-500"></div> BTC
-                    </span>
-                 </div>
-              </div>
-           </div>
-
-           <button 
-             onClick={handleSwap}
-             className="w-full py-4 bg-gradient-brand text-white rounded-xl font-bold mt-6 shadow-glow hover:shadow-glow-gold hover:-translate-y-0.5 transition-all"
-           >
-              Convert Now
-           </button>
         </div>
       </div>
 

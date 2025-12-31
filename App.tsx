@@ -642,7 +642,8 @@ const App: React.FC = () => {
             user={user}
             onLoginClick={handleLoginClick}
             onKYCClick={handleKYCClick}
-            onLogout={handleLogout}
+                  onLogout={handleLogout}
+                  onHomeClick={() => setView(AppView.DASHBOARD)}
           />
         )}
         

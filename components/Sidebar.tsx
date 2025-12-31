@@ -31,16 +31,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({ currentView, setVie
       }`}
     >
       <div>
-        {/* Logo - Size animated based on collapse state. Container height also animates to fit larger logo. */}
-        <div className={`flex items-center border-b border-white/5 justify-center transition-all duration-500 ease-out ${isCollapsed ? 'h-24' : 'h-40'}`}>
-          <div className="cursor-pointer hover:scale-105 transition-transform duration-300" onClick={() => setView(AppView.LANDING)}>
-             <img 
-               src="https://i.postimg.cc/3Rj9YpjK/Group-83.png" 
-               alt="DETI HOLD" 
-               className={`object-contain transition-all duration-500 ease-out ${isCollapsed ? 'w-10 h-10' : 'w-32 h-32'}`}
-             />
-          </div>
-        </div>
+        {/* Logo removed for cleaner top bar */}
 
         {/* Menu */}
         <nav className="mt-8 px-4 space-y-2">
