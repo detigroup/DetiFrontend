@@ -26,9 +26,13 @@ interface WalletProps {
   onGenerateAddress: (symbol: string, networkId: string, standard: string) => void;
   onWithdraw: (symbol: string, amount: number) => void;
   onDeposit: (symbol: string, amount: number) => void;
+   // Fix REason: balancesMap provided by App when fetching /api/v1/balances
+   balancesMap?: Record<string, { actual: number; orders: number }>; 
+   onRefreshBalances?: () => void;
+   balancesLastUpdated?: number | null;
 }
 
-export const Wallet: React.FC<WalletProps> = ({ assets, walletAddresses, onGenerateAddress, onWithdraw, onDeposit }) => {
+export const Wallet: React.FC<WalletProps> = ({ assets, walletAddresses, onGenerateAddress, onWithdraw, onDeposit, balancesMap, onRefreshBalances, balancesLastUpdated }) => {
   const [activeTab, setActiveTab] = useState<'assets' | 'history'>('assets');
   const [selectedAsset, setSelectedAsset] = useState<PortfolioAsset | null>(null);
   const [modalType, setModalType] = useState<'deposit' | 'withdraw' | null>(null);
@@ -118,7 +122,7 @@ export const Wallet: React.FC<WalletProps> = ({ assets, walletAddresses, onGener
            <h1 className="text-3xl md:text-4xl font-semibold tracking-tighter text-white mb-1">Wallet Overview</h1>
            <p className="text-deti-subtext">Manage your digital assets, deposits, and withdrawals.</p>
         </div>
-        <div className="flex gap-2 bg-deti-card p-1 rounded-xl border border-deti-border">
+      <div className="flex gap-2 bg-deti-card p-1 rounded-xl border border-deti-border items-center">
            <button 
              onClick={() => setActiveTab('assets')}
              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'assets' ? 'bg-deti-primary text-white shadow-lg' : 'text-deti-subtext hover:text-white'}`}
@@ -131,6 +135,12 @@ export const Wallet: React.FC<WalletProps> = ({ assets, walletAddresses, onGener
            >
              Transaction History
            </button>
+                <button onClick={() => onRefreshBalances && onRefreshBalances()} title="Refresh balances" className="ml-2 px-3 py-1 rounded-lg text-sm text-deti-subtext bg-deti-bg border border-deti-border hover:text-white">
+              <RefreshCcw size={14} />
+           </button>
+                {balancesLastUpdated && (
+                   <div className="text-[11px] text-deti-subtext ml-2">Updated {new Date(balancesLastUpdated).toLocaleTimeString()}</div>
+                )}
         </div>
       </div>
 
@@ -180,8 +190,8 @@ export const Wallet: React.FC<WalletProps> = ({ assets, walletAddresses, onGener
                  <thead className="bg-deti-bg border-b border-deti-border">
                     <tr className="text-left text-xs font-bold text-deti-subtext uppercase tracking-wider">
                        <th className="px-6 py-4">Asset</th>
-                       <th className="px-6 py-4">Total Balance</th>
                        <th className="px-6 py-4">Available</th>
+                       <th className="px-6 py-4">On Orders</th>
                        <th className="px-6 py-4">Value (USD)</th>
                        <th className="px-6 py-4 text-right">Actions</th>
                     </tr>
@@ -200,8 +210,8 @@ export const Wallet: React.FC<WalletProps> = ({ assets, walletAddresses, onGener
                                 </div>
                              </div>
                           </td>
-                          <td className="px-6 py-5 font-mono text-sm text-gray-300">{asset.amount.toLocaleString()}</td>
-                          <td className="px-6 py-5 font-mono text-sm text-gray-300">{asset.amount.toLocaleString()}</td>
+                          <td className="px-6 py-5 font-mono text-sm text-gray-300">{(balancesMap?.[asset.symbol]?.actual ?? asset.amount).toLocaleString()}</td>
+                          <td className="px-6 py-5 font-mono text-sm text-gray-300">{(balancesMap?.[asset.symbol]?.orders ?? 0).toLocaleString()}</td>
                           <td className="px-6 py-5 font-mono text-sm font-bold text-white">${asset.valueUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                           <td className="px-6 py-5">
                              <div className="flex justify-end gap-3">

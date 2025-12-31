@@ -24,6 +24,7 @@ export interface MarketPair {
   sparkline?: number[]; // Mock sparkline data
   category?: string; // Added for Market Overview
   marketCap?: number; // Added for Market Overview
+  name?: string; // Friendly display name for the base asset
 }
 
 export interface Order {

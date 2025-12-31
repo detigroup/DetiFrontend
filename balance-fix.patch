@@ -1,0 +1,104 @@
+Replace this in App.tsx starting at line 299:
+
+   // Fix REason: When user navigates to Wallet, call backend balances API (uses VITE_API_DOMAIN when configured)
+   useEffect(() => {
+      let mounted = true;
+      const fetchBalances = async () => {
+         if (currentView !== AppView.WALLET) return;
+         try {
+            const domain = (import.meta as any)?.env?.VITE_API_DOMAIN || 'https://detidex.yeuthich.net';
+            const url = `${String(domain).replace(/\/$/, '')}/api/v1/balance/`;
+            const cookieJwt = typeof document !== 'undefined' ? (document.cookie.split(';').find(c => c.trim().startsWith('jwt=')) || '').split('=')[1] || '' : '';
+            const token = localStorage.getItem('jwt') || localStorage.getItem('token') || localStorage.getItem('jwt_auth_token') || cookieJwt || '';
+            const headers: Record<string, string> = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const res = await fetch(url, { method: 'GET', headers, credentials: 'include' });
+            if (!mounted) return;
+            if (!res.ok) return; // ignore if unauthorized or unavailable
+            const data = await res.json();
+
+            // Data shape: { BTC: { actual: 1.23, orders: 0.1 }, USD: { ... } }
+            setBalancesMap(data || {});
+            setBalancesLastUpdated(Date.now());
+
+            // Map balances into PortfolioAsset[] for display
+            const mappedAssets: PortfolioAsset[] = Object.entries(data || {}).map(([sym, val]: any) => {
+               const symbol = sym;
+               const actual = Number(val?.actual) || 0;
+               const orders = Number(val?.orders) || 0;
+               // Find price from pairs (prefer base==symbol and quote==USDT)
+               const pairMatch = pairs.find(p => p.base === symbol) || pairs.find(p => p.symbol.startsWith(symbol + '/'));
+               const price = pairMatch ? Number(pairMatch.price) : 0;
+               const existing = assets.find(a => a.symbol === symbol);
+               return {
+                  symbol,
+                  name: existing?.name || symbol,
+                  amount: actual + orders,
+                  valueUsd: (actual + orders) * price,
+                  color: existing?.color || '#374151'
+               } as PortfolioAsset;
+            });
+
+            // Merge with current assets (keep any assets not in balances list)
+            const existingNotInBalances = assets.filter(a => !Object.prototype.hasOwnProperty.call(data || {}, a.symbol));
+            setAssets([...mappedAssets, ...existingNotInBalances]);
+         } catch (err) {
+            // eslint-disable-next-line no-console
+            console.warn('Failed to fetch balances', err);
+         }
+      };
+
+      fetchBalances();
+      return () => { mounted = false; };
+   }, [currentView, pairs]);
+
+With:
+
+   // Fix REason: Fetch balances only when navigating to WALLET, not on every pairs update
+   useEffect(() => {
+      if (currentView !== AppView.WALLET) return;
+      let mounted = true;
+      const fetchBalances = async () => {
+         try {
+            const domain = (import.meta as any)?.env?.VITE_API_DOMAIN || 'https://detidex.yeuthich.net';
+            const url = `${String(domain).replace(/\/$/, '')}/api/v1/balance/`;
+            const cookieJwt = typeof document !== 'undefined' ? (document.cookie.split(';').find(c => c.trim().startsWith('jwt=')) || '').split('=')[1] || '' : '';
+            const token = localStorage.getItem('jwt') || localStorage.getItem('token') || localStorage.getItem('jwt_auth_token') || cookieJwt || '';
+            const headers: Record<string, string> = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const res = await fetch(url, { method: 'GET', headers, credentials: 'include' });
+            if (!mounted) return;
+            if (!res.ok) return;
+            const data = await res.json();
+            setBalancesMap(data || {});
+            setBalancesLastUpdated(Date.now());
+            // Store raw balance data, update assets in separate effect based on pairs
+         } catch (err) {
+            console.warn('Failed to fetch balances', err);
+         }
+      };
+      fetchBalances();
+      return () => { mounted = false; };
+   }, [currentView]);
+
+   // Recalculate asset prices when balances or pairs change
+   useEffect(() => {
+      if (!balancesMap || Object.keys(balancesMap).length === 0) return;
+      const mappedAssets: PortfolioAsset[] = Object.entries(balancesMap).map(([sym, val]: any) => {
+         const symbol = sym;
+         const actual = Number(val?.actual) || 0;
+         const orders = Number(val?.orders) || 0;
+         const pairMatch = pairs.find(p => p.base === symbol) || pairs.find(p => p.symbol.startsWith(symbol + '/'));
+         const price = pairMatch ? Number(pairMatch.price) : 0;
+         const existing = assets.find(a => a.symbol === symbol);
+         return {
+            symbol,
+            name: existing?.name || symbol,
+            amount: actual + orders,
+            valueUsd: (actual + orders) * price,
+            color: existing?.color || '#374151'
+         } as PortfolioAsset;
+      });
+      const existingNotInBalances = assets.filter(a => !Object.prototype.hasOwnProperty.call(balancesMap, a.symbol));
+      setAssets([...mappedAssets, ...existingNotInBalances]);
+   }, [balancesMap, pairs]);

@@ -35,6 +35,8 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({
   walletAddresses, onGenerateAddress, onWithdraw, onDeposit
 }) => {
   const [swapAmount, setSwapAmount] = useState<string>('');
+   const [sortField, setSortField] = useState<'asset'|'price'|'change'|'marketCap'>('marketCap');
+   const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc');
   
   // Modal State
   const [modalType, setModalType] = useState<'deposit' | 'withdraw' | null>(null);
@@ -294,30 +296,45 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({
             <table className="w-full text-left">
                <thead className="bg-deti-bg border-b border-white/5">
                   <tr className="text-xs font-bold text-deti-subtext uppercase tracking-wider">
-                     <th className="px-6 py-4">Asset</th>
-                     <th className="px-6 py-4">Last Price</th>
-                     <th className="px-6 py-4">24h Change</th>
-                     <th className="px-6 py-4">Market Cap</th>
+                     <th className="px-6 py-4 cursor-pointer" onClick={() => { const f: any = 'asset'; setSortField(f); setSortDir(prev => sortField === f ? (prev === 'asc' ? 'desc' : 'asc') : 'asc'); }}>Asset</th>
+                     <th className="px-6 py-4 cursor-pointer" onClick={() => { const f: any = 'price'; setSortField(f); setSortDir(prev => sortField === f ? (prev === 'asc' ? 'desc' : 'asc') : 'asc'); }}>Last Price</th>
+                     <th className="px-6 py-4 cursor-pointer" onClick={() => { const f: any = 'change'; setSortField(f); setSortDir(prev => sortField === f ? (prev === 'asc' ? 'desc' : 'asc') : 'asc'); }}>24h Change</th>
+                     <th className="px-6 py-4 cursor-pointer" onClick={() => { const f: any = 'marketCap'; setSortField(f); setSortDir(prev => sortField === f ? (prev === 'asc' ? 'desc' : 'asc') : 'desc'); }}>Market Cap</th>
                      <th className="px-6 py-4 text-right">Action</th>
                   </tr>
                </thead>
                <tbody className="divide-y divide-white/5 text-sm">
-                  {pairs.map((pair) => (
+                           {pairs
+                              .slice()
+                              .filter(p => ((p.base || p.symbol || '').toString().toUpperCase() !== 'USDT'))
+                    .sort((a,b) => {
+                      const dir = sortDir === 'asc' ? 1 : -1;
+                      if (sortField === 'asset') return dir * a.base.localeCompare(b.base);
+                      if (sortField === 'price') return dir * (Number(a.price) - Number(b.price));
+                      if (sortField === 'change') return dir * (Number(a.change24h) - Number(b.change24h));
+                      if (sortField === 'marketCap') return dir * (Number(a.marketCap ?? a.volume24h ?? 0) - Number(b.marketCap ?? b.volume24h ?? 0));
+                      return 0;
+                    })
+                    .map((pair) => (
                      <tr key={pair.symbol} className="hover:bg-white/5 transition-colors group cursor-pointer" onClick={() => onNavigateToTrade(pair)}>
                         <td className="px-6 py-4">
                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-gradient-brand flex items-center justify-center font-bold text-white text-xs">
-                                 {pair.base[0]}
+                                 <div className="w-8 h-8 rounded-full bg-gradient-brand flex items-center justify-center font-bold text-white text-xs flex-shrink-0">
+                                 {((pair.base || pair.symbol || pair.name || '?')[0] || '?')}
                               </div>
-                              <span className="font-bold text-white">{pair.base}</span>
-                              <span className="text-deti-subtext text-xs">{pair.quote}</span>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-3">
+                                  <div className="font-bold text-white truncate max-w-[140px]">{pair.base || pair.symbol || 'UNKNOWN'}</div>
+                                  {pair.name && <div className="text-deti-subtext text-xs truncate max-w-[220px]">{pair.name}</div>}
+                                </div>
+                              </div>
                            </div>
                         </td>
                         <td className="px-6 py-4 font-mono font-bold text-white">${pair.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                         <td className={`px-6 py-4 font-bold ${pair.change24h >= 0 ? 'text-deti-success' : 'text-deti-danger'}`}>
                            {pair.change24h > 0 ? '+' : ''}{pair.change24h.toFixed(2)}%
                         </td>
-                        <td className="px-6 py-4 text-deti-subtext font-mono">${(pair.volume24h / 1000000).toFixed(2)}M</td>
+                        <td className="px-6 py-4 text-deti-subtext font-mono">${((pair.marketCap ?? pair.volume24h) / 1000000).toFixed(2)}M</td>
                         <td className="px-6 py-4 text-right">
                            <button className="px-4 py-2 bg-white/5 hover:bg-deti-primary hover:text-white rounded-lg text-xs font-bold text-deti-subtext transition-all">
                               Trade

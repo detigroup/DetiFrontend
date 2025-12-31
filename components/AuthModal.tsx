@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserProfile } from '../types';
 import { X, Mail, Phone, Lock, Eye, EyeOff, ArrowRight, Loader2, Globe } from 'lucide-react';
 
@@ -14,6 +14,70 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
   const [method, setMethod] = useState<'email' | 'phone'>('email');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+   const [recaptchaChecked, setRecaptchaChecked] = useState(false);
+   const [formError, setFormError] = useState<string | null>(null);
+   const [language, setLanguage] = useState<'en'|'vi'|'ar'>(() => {
+      try { return (localStorage.getItem('deti_lang') as any) || 'en'; } catch { return 'en'; }
+   });
+
+   const translations: Record<string, Record<string, string>> = {
+      en: {
+         signIn: 'Sign In',
+         createAccount: 'Create Account',
+         enterCredentials: 'Enter your credentials and verify the reCAPTCHA to enable the Sign In button.',
+         emailAddress: 'Email Address',
+         phoneNumber: 'Phone Number',
+         password: 'Password',
+         forgotPassword: 'Forgot Password?',
+         verifyRecaptcha: 'Verify reCAPTCHA',
+         imNotRobot: "I'M NOT A ROBOT",
+         recaptchaRequired: "Please check 'I'M NOT A ROBOT' before signing in.",
+         recaptchaHelper: 'Click Verify reCAPTCHA to enable Sign In.',
+         continueWith: 'OR CONTINUE WITH',
+         signUpPrompt: "Don't have an account?",
+         signUpAction: 'Sign Up',
+         loginAction: 'Log In',
+         pleaseCheckToEnable: "Please check 'I'M NOT A ROBOT' to enable the Sign In button."
+      },
+      vi: {
+         signIn: 'Đăng nhập',
+         createAccount: 'Tạo tài khoản',
+         enterCredentials: 'Nhập thông tin đăng nhập và xác minh reCAPTCHA để bật nút Đăng nhập.',
+         emailAddress: 'Địa chỉ Email',
+         phoneNumber: 'Số điện thoại',
+         password: 'Mật khẩu',
+         forgotPassword: 'Quên mật khẩu?',
+         verifyRecaptcha: 'Xác minh reCAPTCHA',
+         imNotRobot: 'TÔI KHÔNG PHẢI ROBOT',
+         recaptchaRequired: "Vui lòng chọn 'TÔI KHÔNG PHẢI ROBOT' trước khi đăng nhập.",
+         recaptchaHelper: 'Nhấn Xác minh reCAPTCHA để bật nút Đăng nhập.',
+         continueWith: 'HOẶC TIẾP TỤC VỚI',
+         signUpPrompt: 'Chưa có tài khoản?',
+         signUpAction: 'Đăng ký',
+         loginAction: 'Đăng nhập',
+         pleaseCheckToEnable: "Vui lòng chọn 'TÔI KHÔNG PHẢI ROBOT' để bật nút Đăng nhập."
+      },
+      ar: {
+         signIn: 'تسجيل الدخول',
+         createAccount: 'إنشاء حساب',
+         enterCredentials: 'أدخل بياناتك وقم بتأكيد reCAPTCHA لتمكين زر تسجيل الدخول.',
+         emailAddress: 'البريد الإلكتروني',
+         phoneNumber: 'رقم الهاتف',
+         password: 'كلمة المرور',
+         forgotPassword: 'هل نسيت كلمة المرور؟',
+         verifyRecaptcha: 'التحقق من reCAPTCHA',
+         imNotRobot: 'أنا لست روبوتًا',
+         recaptchaRequired: "يرجى تحديد 'أنا لست روبوتًا' قبل تسجيل الدخول.",
+         recaptchaHelper: 'انقر فوق التحقق من reCAPTCHA لتمكين تسجيل الدخول.',
+         continueWith: 'أو المتابعة عبر',
+         signUpPrompt: 'ليس لديك حساب؟',
+         signUpAction: 'اشتراك',
+         loginAction: 'تسجيل الدخول',
+         pleaseCheckToEnable: "يرجى تحديد 'أنا لست روبوتًا' لتمكين زر تسجيل الدخول."
+      }
+   };
+
+   const t = (key: string) => (translations[language] && translations[language][key]) || translations['en'][key];
 
   // Form State
   const [email, setEmail] = useState('');
@@ -21,28 +85,146 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
   const [password, setPassword] = useState('');
   const [country, setCountry] = useState('United Arab Emirates');
 
+   // Reset recaptcha state when method or modal is reopened (do NOT reset while typing password)
+   useEffect(() => {
+      setRecaptchaChecked(false);
+      setFormError(null);
+   }, [method, isOpen]);
+
+   // Persist language selection
+   useEffect(() => {
+      try { localStorage.setItem('deti_lang', language); } catch {}
+      // set document dir for proper directionality when modal is open
+      if (isOpen) {
+         document.documentElement.lang = language;
+         document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+      }
+   }, [language, isOpen]);
+
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+   const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setFormError(null);
+      setLoading(true);
 
-    // Simulate API Call
-    setTimeout(() => {
-      const mockUser: UserProfile = {
-        id: 'USR-' + Math.floor(Math.random() * 10000),
-        name: method === 'email' ? email.split('@')[0] : 'User ' + phone.slice(-4),
-        email: method === 'email' ? email : undefined,
-        phone: method === 'phone' ? phone : undefined,
-        kycStatus: 'Unverified',
-        tier: 0,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`
-      };
-      setLoading(false);
-      onLogin(mockUser);
-      onClose();
-    }, 1500);
-  };
+      if (mode === 'login') {
+         if (!recaptchaChecked) {
+            setFormError(t('recaptchaRequired'));
+            setLoading(false);
+            return;
+         }
+
+         try {
+            const domain = ((import.meta as any)?.env?.VITE_API_DOMAIN) || 'https://detidex.yeuthich.net';
+            const apiPath = ((import.meta as any)?.env?.VITE_LOGIN_API) || '/api/v1/auth/login/';
+            const url = `${domain.replace(/\/$/, '')}${apiPath}`;
+
+            const payload: Record<string, any> = {
+               password,
+               recaptcha: recaptchaChecked,
+            };
+            if (method === 'email') payload.email = email;
+            if (method === 'phone') payload.phone = phone;
+
+            const res = await fetch(url, {
+               method: 'POST',
+               headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json'
+               },
+               body: JSON.stringify(payload)
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+               const msg = data?.message || data?.error || `Login failed (status ${res.status})`;
+               setFormError(msg);
+               setLoading(false);
+               return;
+            }
+
+            // Persist cookies/tokens returned in the JSON response.
+            // Note: HttpOnly cookies must be set server-side with Set-Cookie; this writes client-accessible cookies
+            const setCookie = (name: string, value: string, opts: { maxAge?: number, domain?: string, secure?: boolean, sameSite?: 'Lax'|'Strict'|'None' } = {}) => {
+               try {
+                  const secure = opts.secure ?? (window.location.protocol === 'https:');
+                  let cookie = `${name}=${encodeURIComponent(value)}; path=/;`;
+                  if (opts.maxAge) cookie += ` max-age=${opts.maxAge};`;
+                  if (opts.domain) cookie += ` domain=${opts.domain};`;
+                  if (secure) cookie += ' Secure;';
+                  cookie += ` SameSite=${opts.sameSite ?? 'Lax'};`;
+                  document.cookie = cookie;
+               } catch (e) {
+                  // eslint-disable-next-line no-console
+                  console.warn('Unable to set cookie', name, e);
+               }
+            };
+
+            const cookieSource: any = data.cookies || data.tokens || data || {};
+            const cookieKeys = ['jwt','jwt_auth_token','jwt_refresh_token','sessionid','lang','messages'];
+            cookieKeys.forEach((k) => {
+               const v = cookieSource[k] ?? cookieSource?.[k];
+               if (v) {
+                  setCookie(k, String(v), { maxAge: 60 * 60 * 24 * 30 }); // default 30 days
+                  try { localStorage.setItem(k, String(v)); } catch {}
+               }
+            });
+
+            // Ensure a primary token is stored for Authorization header usage
+            const primaryToken = cookieSource.token || cookieSource.access || cookieSource.access_token || cookieSource.jwt || cookieSource.jwt_auth_token || '';
+            if (primaryToken) {
+               try {
+                  localStorage.setItem('jwt', String(primaryToken));
+                  localStorage.setItem('token', String(primaryToken));
+                  localStorage.setItem('jwt_auth_token', String(primaryToken));
+                  setCookie('jwt_front', String(primaryToken), { maxAge: 60 * 60 * 24 * 30 });
+               } catch (e) {
+                  // eslint-disable-next-line no-console
+                  console.warn('Unable to persist primary token', e);
+               }
+            }
+
+            const userRaw = data.user || data.data || data.profile || data;
+            const mapped: UserProfile = {
+               id: userRaw?.id?.toString() || userRaw?.uuid || 'USR-' + Math.floor(Math.random() * 10000),
+               name: userRaw?.name || userRaw?.username || (email ? email.split('@')[0] : `User ${phone.slice(-4)}`),
+               email: userRaw?.email || (method === 'email' ? email : undefined),
+               phone: userRaw?.phone || (method === 'phone' ? phone : undefined),
+               kycStatus: userRaw?.kycStatus || userRaw?.kyc_status || 'Unverified',
+               tier: userRaw?.tier ?? 0,
+               avatar: userRaw?.avatar || userRaw?.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`
+            };
+
+            setLoading(false);
+            onLogin(mapped);
+            onClose();
+         } catch (err: any) {
+            console.error('Login error', err);
+            setFormError(err?.message || 'Network error during login');
+            setLoading(false);
+         }
+
+         return;
+      }
+
+      // Registration / fallback: keep mock behaviour
+      setTimeout(() => {
+         const mockUser: UserProfile = {
+            id: 'USR-' + Math.floor(Math.random() * 10000),
+            name: method === 'email' ? email.split('@')[0] : 'User ' + phone.slice(-4),
+            email: method === 'email' ? email : undefined,
+            phone: method === 'phone' ? phone : undefined,
+            kycStatus: 'Unverified',
+            tier: 0,
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`
+         };
+         setLoading(false);
+         onLogin(mockUser);
+         onClose();
+      }, 1500);
+   };
 
   const handleGoogleLogin = () => {
     setLoading(true);
@@ -67,7 +249,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose}></div>
 
       {/* Modal Content with glassmorphism */}
-      <div className="relative bg-[#181920]/90 backdrop-blur-xl border border-white/10 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+      <div dir={language === 'ar' ? 'rtl' : 'ltr'} lang={language} className="relative bg-[#181920]/90 backdrop-blur-xl border border-white/10 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* Header Image/Banner - Updated Background for Contrast */}
         <div className="h-32 bg-[#111218] relative overflow-hidden border-b border-white/5">
@@ -84,13 +266,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
            </button>
         </div>
 
-        <div className="p-8">
-           <div className="mb-6">
-              <h2 className="text-2xl font-bold text-white mb-1">{mode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
-              <p className="text-deti-subtext text-sm">
-                {mode === 'login' ? 'Enter your credentials to access your account.' : 'Join the world\'s premium crypto exchange.'}
-              </p>
-           </div>
+            <div className={`p-8 ${language === 'ar' ? 'text-right' : ''}`}>
+                <div className="mb-6 flex items-start justify-between gap-4">
+                     <div>
+                        <h2 className="text-2xl font-bold text-white mb-1">{mode === 'login' ? t('signIn') : t('createAccount')}</h2>
+                        <p className="text-deti-subtext text-sm">{mode === 'login' ? t('enterCredentials') : "Join the world's premium crypto exchange."}</p>
+                     </div>
+                     <div className="flex items-center gap-3">
+                        <select aria-label="Select language" value={language} onChange={(e) => setLanguage(e.target.value as any)} className="bg-white/5 text-xs text-white rounded-md px-2 py-1 border border-white/10">
+                           <option value="en">English</option>
+                           <option value="vi">Tiếng Việt</option>
+                           <option value="ar">العربية</option>
+                        </select>
+                     </div>
+                </div>
 
            {/* Method Tabs - Updated Active Color */}
            <div className="flex p-1 bg-white/5 rounded-xl mb-6 border border-white/10">
@@ -137,7 +326,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
 
               {method === 'email' ? (
                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-deti-subtext uppercase ml-1">Email Address</label>
+                  <label className="text-xs font-bold text-deti-subtext uppercase ml-1">{t('emailAddress')}</label>
                     <div className="relative group">
                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-deti-subtext group-focus-within:text-deti-primary transition-colors" />
                        <input 
@@ -149,10 +338,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                          placeholder="name@example.com"
                        />
                     </div>
-                 </div>
+                         </div>
               ) : (
                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-deti-subtext uppercase ml-1">Phone Number</label>
+                  <label className="text-xs font-bold text-deti-subtext uppercase ml-1">{t('phoneNumber')}</label>
                     <div className="relative group">
                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-deti-subtext group-focus-within:text-deti-primary transition-colors" />
                        <input 
@@ -168,7 +357,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
               )}
 
               <div className="space-y-1">
-                 <label className="text-xs font-bold text-deti-subtext uppercase ml-1">Password</label>
+                 <label className="text-xs font-bold text-deti-subtext uppercase ml-1">{t('password')}</label>
                  <div className="relative group">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-deti-subtext group-focus-within:text-deti-primary transition-colors" />
                     <input 
@@ -187,30 +376,50 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                  </div>
-              </div>
+                         </div>
+                        {/* reCAPTCHA checkbox always visible in login mode */}
+                        {mode === 'login' && (
+                           <div className="mt-3 flex items-center gap-3">
+                              <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                                 <input
+                                    type="checkbox"
+                                    checked={recaptchaChecked}
+                                    onChange={(e) => setRecaptchaChecked(e.target.checked)}
+                                    className="w-4 h-4 accent-deti-primary"
+                                 />
+                                 <span className="font-medium select-none">{t('imNotRobot')}</span>
+                              </label>
+                              {formError && <div className="text-xs text-red-400">{formError}</div>}
+                              {/* Helper copy for clarity */}
+                              <div className="w-full text-xs text-deti-subtext">{t('recaptchaHelper')}</div>
+                           </div>
+                        )}
 
               {mode === 'login' && (
                  <div className="flex justify-end">
-                    <a href="#" className="text-xs text-deti-primary hover:text-deti-secondary font-medium transition-colors">Forgot Password?</a>
+                    <a href="#" className="text-xs text-deti-primary hover:text-deti-secondary font-medium transition-colors">{t('forgotPassword')}</a>
                  </div>
               )}
 
-              <button 
-                type="submit" 
-                disabled={loading}
-                className="w-full py-3 bg-gradient-brand text-white rounded-xl font-bold shadow-glow hover:shadow-glow-gold transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-              >
-                 {loading ? <Loader2 className="animate-spin w-5 h-5" /> : (
-                    <>
-                       {mode === 'login' ? 'Log In' : 'Create Account'} <ArrowRight size={18} />
-                    </>
-                 )}
-              </button>
+                       <button 
+                         type="submit" 
+                         disabled={loading || (mode === 'login' && !recaptchaChecked)}
+                         className="w-full py-3 bg-gradient-brand text-white rounded-xl font-bold shadow-glow hover:shadow-glow-gold transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                       >
+                          {loading ? <Loader2 className="animate-spin w-5 h-5" /> : (
+                             <>
+                                {mode === 'login' ? t('loginAction') : t('createAccount')} <ArrowRight size={18} />
+                             </>
+                          )}
+                       </button>
+                       {mode === 'login' && !recaptchaChecked && (
+                         <div className="mt-2 text-xs text-deti-subtext">{t('pleaseCheckToEnable')}</div>
+                       )}
            </form>
 
            <div className="relative my-6 text-center">
               <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
-              <span className="relative bg-[#181920] px-4 text-xs text-deti-subtext rounded">OR CONTINUE WITH</span>
+              <span className="relative bg-[#181920] px-4 text-xs text-deti-subtext rounded">{t('continueWith')}</span>
            </div>
 
            <button 
@@ -229,12 +438,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
            </button>
 
            <div className="mt-6 text-center text-sm text-deti-subtext">
-              {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
+              {mode === 'login' ? `${t('signUpPrompt')} ` : `${t('signUpPrompt')} `}
               <button 
                 onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
                 className="text-deti-primary font-bold hover:underline"
               >
-                 {mode === 'login' ? 'Sign Up' : 'Log In'}
+                 {mode === 'login' ? t('signUpAction') : t('loginAction')}
               </button>
            </div>
         </div>

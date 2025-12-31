@@ -1,7 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, ComposedChart, XAxis, YAxis, Tooltip, CartesianGrid, Bar, Cell } from 'recharts';
 import { ChartDataPoint } from '../types';
+// Fix REason: the tradingview adapter lives under `src/services` (not top-level `/services`),
+// so adjust import path so Vite can resolve it correctly during dev/build.
+import { getKlines } from '../src/services/tradingview';
 import { 
   Maximize2, Settings, CandlestickChart, Activity, 
   Pencil, Type, ChevronDown, 
@@ -42,6 +45,8 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label })
 
 export const TradingChart: React.FC<TradingChartProps> = React.memo(({ data, symbol, isDarkMode = true }) => {
   const [timeframe, setTimeframe] = useState('1h');
+  const [fetchedData, setFetchedData] = useState<ChartDataPoint[] | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Calculate domain for Y-axis scaling
   const allPrices = data.flatMap(d => [d.high, d.low]);
@@ -49,12 +54,56 @@ export const TradingChart: React.FC<TradingChartProps> = React.memo(({ data, sym
   const maxPrice = Math.max(...allPrices);
   const padding = (maxPrice - minPrice) * 0.1;
 
+  // Prefer fetched backend klines when available, else fallback to prop `data`
+  const sourceData = fetchedData && fetchedData.length > 0 ? fetchedData : data;
+
+  // Fetch klines from backend when symbol or timeframe changes
+  useEffect(() => {
+    let mounted = true;
+    let unsubscribeWs: (() => void) | null = null;
+    const doFetch = async () => {
+      setIsLoading(true);
+      const pairSymbol = symbol; // e.g. BTC/USDT
+      try {
+        const klines = await getKlines(pairSymbol, timeframe, 200);
+        if (!mounted) return;
+        if (klines && klines.length > 0) {
+          setFetchedData(klines);
+        }
+      } catch (e) {
+        // ignore
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+
+    const useWs = (import.meta as any)?.env?.VITE_USE_WS === 'true';
+    if (useWs) {
+      // subscribe via websocket to get_chart messages
+      // dynamic import to avoid errors in non-browser/no-ws environments
+      // Fix REason: dynamic import path must point to actual location under `src`.
+      import('../src/services/tradingview').then(mod => {
+        unsubscribeWs = mod.subscribeLiveKlines(symbol, timeframe, (bars: ChartDataPoint[]) => {
+          if (!mounted) return;
+          setFetchedData(bars);
+        });
+      }).catch(() => doFetch());
+    } else {
+      doFetch();
+      // Short polling for "minute" frames to keep last candle updated
+      const pollInterval = timeframe === '1m' || timeframe === '15m' ? 30_000 : 60_000;
+      const poll = setInterval(doFetch, pollInterval);
+      return () => { mounted = false; clearInterval(poll); if (unsubscribeWs) unsubscribeWs(); };
+    }
+    return () => { mounted = false; if (unsubscribeWs) unsubscribeWs(); };
+  }, [symbol, timeframe]);
+
   // Process data for Recharts
-  const processedData = React.useMemo(() => data.map(d => ({
+  const processedData = React.useMemo(() => sourceData.map(d => ({
     ...d,
     body: [Math.min(d.open, d.close), Math.max(d.open, d.close)],
     isUp: d.close >= d.open
-  })), [data]);
+  })), [sourceData]);
 
   const axisColor = isDarkMode ? '#64748B' : '#64748B'; // Slate-500
   const gridColor = isDarkMode ? '#262935' : '#E2E8F0'; // deti-border
@@ -150,6 +199,10 @@ export const TradingChart: React.FC<TradingChartProps> = React.memo(({ data, sym
                 cursor={{ stroke: axisColor, strokeWidth: 1, strokeDasharray: '4 4' }}
                 isAnimationActive={false}
               />
+              {/* Loading indicator (very small) */}
+              {isLoading && (
+                <text x={10} y={20} fill={axisColor} fontSize={11}>Updating…</text>
+              )}
 
               {/* Volume Bars */}
               <Bar 

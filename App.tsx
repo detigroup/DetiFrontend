@@ -19,6 +19,7 @@ import { KYC } from './components/KYC';
 import { MintRWA } from './components/MintRWA';
 import { MarketTicker } from './components/MarketTicker';
 import { MarketOverview } from './components/MarketOverview';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Search, Star, CandlestickChart, List, ArrowLeftRight, Settings, Bell, ChevronDown, Monitor, Plus, LayoutGrid, ChevronLeft, Percent, ShieldCheck, BarChart2, LogOut, User as UserIcon } from 'lucide-react';
 
 // Helper to generate realistic mock addresses
@@ -31,6 +32,25 @@ const generateMockAddress = (symbol: string, standard: string): string => {
   if (symbol === 'BTC') return `bc1q${alpha(38)}`;
   if (symbol === 'SOL') return `${alpha(44)}`;
   return `0x${hex(40)}`; // Default
+};
+
+// Debug toggle (set VITE_DEBUG=true to enable verbose logs)
+const isDebug = String((import.meta as any)?.env?.VITE_DEBUG || 'false').toLowerCase() === 'true';
+const maskToken = (token: string) => token ? `${token.slice(0, 6)}...${token.slice(-4)}` : 'none';
+const getCookieValue = (name: string): string => {
+   if (typeof document === 'undefined') return '';
+   const pattern = new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()\[\]\\\/\+^])/g, '\\$1') + '=([^;]*)');
+   const match = document.cookie.match(pattern);
+   return match ? decodeURIComponent(match[1]) : '';
+};
+// Consolidated auth token resolver: prioritise localStorage then readable cookies
+const resolveAuthToken = (): { token: string; source: string; cookieJwt: string; cookieJwtFront: string; lsToken: string } => {
+   const lsToken = localStorage.getItem('jwt') || localStorage.getItem('token') || localStorage.getItem('jwt_auth_token') || '';
+   const cookieJwt = getCookieValue('jwt');
+   const cookieJwtFront = getCookieValue('jwt_front');
+   const token = lsToken || cookieJwtFront || cookieJwt;
+   const source = lsToken ? 'localStorage' : (cookieJwtFront ? 'cookie:jwt_front' : (cookieJwt ? 'cookie:jwt' : 'none'));
+   return { token, source, cookieJwt, cookieJwtFront, lsToken };
 };
 
 // Helper to fetch from Binance
@@ -77,6 +97,9 @@ const App: React.FC = () => {
   const [selectedPair, setSelectedPair] = useState<MarketPair>(MOCK_PAIRS[0]);
   const [chartData, setChartData] = useState<ChartDataPoint[]>(INITIAL_CHART_DATA);
   const [assets, setAssets] = useState<PortfolioAsset[]>(INITIAL_ASSETS);
+   // Balances fetched from backend /api/v1/balance/ (mapped by symbol)
+   const [balancesMap, setBalancesMap] = useState<Record<string, { actual: number; orders: number }>>({});
+   const [balancesLastUpdated, setBalancesLastUpdated] = useState<number | null>(null);
   
   // Wallet System State (Lifted for persistence)
   const [walletAddresses, setWalletAddresses] = useState<Record<string, Record<string, string>>>({});
@@ -114,9 +137,88 @@ const App: React.FC = () => {
 
   // Auth Handlers - Memoized
   const handleLogin = useCallback((userProfile: UserProfile) => {
-    setUser(userProfile);
-    setIsAuthModalOpen(false);
-    setView(AppView.DASHBOARD);
+      setUser(userProfile);
+      setIsAuthModalOpen(false);
+      setView(AppView.DASHBOARD);
+      
+      // Set jwt cookie after successful login
+      const token = localStorage.getItem('jwt') || localStorage.getItem('token') || localStorage.getItem('jwt_auth_token') || '';
+      if (token && typeof document !== 'undefined') {
+        document.cookie = `jwt=${token}; path=/; max-age=86400; SameSite=Lax`;
+            try { localStorage.setItem('jwt', token); localStorage.setItem('token', token); } catch {}
+      }
+
+      // After successful login, fetch latest coins list and populate top markets
+      (async () => {
+         try {
+            const domain = (import.meta as any)?.env?.VITE_API_DOMAIN || 'https://detidex.yeuthich.net';
+            const endpoint = (import.meta as any)?.env?.VITE_COINS_API || '/api/v1/coins/';
+            const url = `${String(domain).replace(/\/$/, '')}${endpoint}`;
+            const res = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } });
+            const data = await res.json().catch(() => ({}));
+
+            // Prefer the explicit `coins` section in the API response.
+            // The response can be either an array or an object: { coins: { SYMBOL: {...}, ... } }
+            let coinsArray: any[] = [];
+            if (Array.isArray(data)) {
+               // Legacy: response is an array of coin objects
+               coinsArray = data;
+            } else if (data && typeof data === 'object' && data.coins) {
+               if (Array.isArray(data.coins)) {
+                  coinsArray = data.coins.map((c: any) => ({ ...(c as any), symbol: (c.code || c.symbol || c.name || '').toString().toUpperCase() }));
+               } else if (data.coins && typeof data.coins === 'object') {
+                  // Map object keyed by symbol: use the key as the symbol, or fall back to code within the value
+                  coinsArray = Object.entries(data.coins).map(([sym, val]) => ({ ...(val as any), symbol: (val as any)?.code?.toString().toUpperCase() || sym.toString().toUpperCase() }));
+               }
+            } else {
+               // No coins section: skip updating pairs. This avoids accidentally interpreting other top-level keys (e.g., pairs_data) as coins.
+               // eslint-disable-next-line no-console
+               console.warn('No `coins` section in coins API response; skipping coin mapping.');
+            }
+
+            if (coinsArray.length > 0) {
+               const mapped: MarketPair[] = coinsArray.map((c: any) => {
+                  const symbol = (c.symbol || c.ticker || c.id || '').toString().toUpperCase();
+                  const rawPrice = c.price ?? c.price_usd ?? c.last_price ?? 0;
+                  const priceVal = Number(rawPrice) || 0;
+                  try {
+                    // eslint-disable-next-line no-console
+                    console.debug('Coins mapping', { symbol, rawPrice, priceVal, source: Object.keys(c).filter(k => /price/i.test(k)) });
+                  } catch (e) {}
+                  return {
+                     symbol,
+                     base: symbol || 'UNKNOWN',
+                     name: c.name || c.title || (typeof c.code === 'string' ? c.code : symbol) || symbol,
+                     quote: 'USDT', // keep USDT visible as the quote
+                     price: priceVal,
+                     change24h: Number(c.change_24h ?? c.percent_change_24h ?? c.price_change_percentage_24h ?? 0) || 0,
+                     volume24h: Number(c.volume_24h ?? c.volume ?? c.quote_volume ?? 0) || 0,
+                     marketCap: Number(c.market_cap ?? c.marketCap ?? c.volume_24h ?? c.volume ?? 0) || 0,
+                     high24h: Number(c.high_24h ?? c.high ?? 0) || 0,
+                     low24h: Number(c.low_24h ?? c.low ?? 0) || 0,
+                  } as MarketPair;
+               });
+
+               // Default sort: by volume (treat marketCap as mapped from volume if needed)
+               mapped.sort((a, b) => (b.volume24h || b.marketCap || 0) - (a.volume24h || a.marketCap || 0));
+               // Debug: inspect mapped results to ensure base is mapped correctly (temporary)
+               try {
+                  // eslint-disable-next-line no-console
+                  console.debug('Mapped coins (top 10):', mapped.slice(0, 10));
+                  const wrongBases = mapped.filter(m => (m.base || '').toUpperCase() === 'USDT');
+                  if (wrongBases.length > 0) {
+                     // eslint-disable-next-line no-console
+                     console.warn('Found pairs with base incorrectly set to USDT:', wrongBases.map(x => x.symbol));
+                  }
+               } catch (e) {}
+               setPairs(mapped);
+               setSelectedPair(prev => mapped.find(p => p.symbol === prev.symbol) || mapped[0] || prev);
+            }
+         } catch (err) {
+            // eslint-disable-next-line no-console
+            console.warn('Failed to fetch coins after login', err);
+         }
+      })();
   }, []);
 
   const handleLogout = useCallback(() => {
@@ -219,6 +321,158 @@ const App: React.FC = () => {
     setSelectedPair(pair);
     setView(AppView.TRADING);
   }, []);
+
+   // Fix REason: Fetch balances only when navigating to WALLET, not on every pairs update
+   useEffect(() => {
+      if (currentView !== AppView.WALLET) return;
+      let mounted = true;
+      const fetchBalances = async () => {
+         try {
+            const domainEnv = (import.meta as any)?.env?.VITE_API_DOMAIN || 'https://detidex.yeuthich.net';
+            const isLocalHost = typeof window !== 'undefined' && /localhost:300[01]/.test(window.location.host);
+            const apiBase = isLocalHost ? '' : String(domainEnv).replace(/\/$/, '');
+            const url = `${apiBase}/api/v1/balance/`;
+                  const { token, source, cookieJwt, cookieJwtFront, lsToken } = resolveAuthToken();
+                  if (!token) {
+                      console.warn('Skipping balance fetch: no auth token found', {
+                         cookieJwtMasked: maskToken(cookieJwt),
+                         cookieJwtFrontMasked: maskToken(cookieJwtFront),
+                         lsTokenMasked: maskToken(lsToken)
+                      });
+                      return;
+                  }
+            const headers: Record<string, string> = {
+              'Accept': 'application/json, text/plain, */*',
+              'Accept-Encoding': 'gzip, deflate, br',
+              'Accept-Language': 'en-US,en;q=0.9'
+            };
+            if (token) {
+              headers['Authorization'] = `Bearer ${token}`;
+            }
+                  if (isDebug) {
+                     console.debug('[Balances] Request debug', {
+                        url,
+                        headers,
+                        tokenMasked: maskToken(token),
+                        source,
+                        cookieJwt: maskToken(cookieJwt),
+                        cookieJwtFront: maskToken(cookieJwtFront),
+                        lsToken: maskToken(lsToken)
+                     });
+                  }
+            const res = await fetch(url, { method: 'GET', headers, credentials: 'include' });
+            if (!mounted) return;
+            if (!res.ok) return;
+            const data = await res.json();
+            const normalized = (data && (data.balance || data.balances)) ? (data.balance || data.balances) : data;
+            setBalancesMap(normalized || {});
+            setBalancesLastUpdated(Date.now());
+         } catch (err) {
+            console.warn('Failed to fetch balances', err);
+         }
+      };
+      fetchBalances();
+      return () => { mounted = false; };
+   }, [currentView]);
+
+   // Recalculate asset prices when balances or pairs change
+   useEffect(() => {
+      if (!balancesMap || Object.keys(balancesMap).length === 0) return;
+      const mappedAssets: PortfolioAsset[] = Object.entries(balancesMap)
+         .filter(([sym, val]: any) => {
+            const actual = Number(val?.actual) || 0;
+            const orders = Number(val?.orders) || 0;
+            return (actual + orders) > 0;
+         })
+         .map(([sym, val]: any) => {
+            const symbol = sym;
+            const actual = Number(val?.actual) || 0;
+            const orders = Number(val?.orders) || 0;
+            const pairMatch = pairs.find(p => p.base === symbol) || pairs.find(p => p.symbol.startsWith(symbol + '/'));
+            const price = pairMatch ? Number(pairMatch.price) : 0;
+            const existing = assets.find(a => a.symbol === symbol);
+            return {
+               symbol,
+               name: existing?.name || symbol,
+               amount: actual + orders,
+               valueUsd: (actual + orders) * price,
+               color: existing?.color || '#374151'
+            } as PortfolioAsset;
+         });
+      setAssets(mappedAssets);
+   }, [balancesMap, pairs]);
+
+   // Expose refresh function to pass to Wallet
+   const refreshBalances = useCallback(() => {
+      // trigger the effect by calling fetch inside (duplicate logic kept minimal)
+      (async () => {
+         try {
+            const domainEnv = (import.meta as any)?.env?.VITE_API_DOMAIN || 'https://detidex.yeuthich.net';
+            const isLocalHost = typeof window !== 'undefined' && /localhost:300[01]/.test(window.location.host);
+            const apiBase = isLocalHost ? '' : String(domainEnv).replace(/\/$/, '');
+            const url = `${apiBase}/api/v1/balance/`;
+                  const { token, source, cookieJwt, cookieJwtFront, lsToken } = resolveAuthToken();
+                  if (!token) {
+                      console.warn('Skipping balance refresh: no auth token found', {
+                         cookieJwtMasked: maskToken(cookieJwt),
+                         cookieJwtFrontMasked: maskToken(cookieJwtFront),
+                         lsTokenMasked: maskToken(lsToken)
+                      });
+                      return;
+                  }
+            const headers: Record<string, string> = {
+              'Accept': 'application/json, text/plain, */*',
+              'Accept-Encoding': 'gzip, deflate, br',
+              'Accept-Language': 'en-US,en;q=0.9'
+            };
+            if (token) {
+              headers['Authorization'] = `Bearer ${token}`;
+            }
+                  if (isDebug) {
+                     console.debug('[Balances] Refresh debug', {
+                        url,
+                        headers,
+                        tokenMasked: maskToken(token),
+                        source,
+                        cookieJwt: maskToken(cookieJwt),
+                        cookieJwtFront: maskToken(cookieJwtFront),
+                        lsToken: maskToken(lsToken)
+                     });
+                  }
+            const res = await fetch(url, { method: 'GET', headers, credentials: 'include' });
+            if (!res.ok) return;
+            const data = await res.json();
+            const normalized = (data && (data.balance || data.balances)) ? (data.balance || data.balances) : data;
+            setBalancesMap(normalized || {});
+            setBalancesLastUpdated(Date.now());
+            const mappedAssets: PortfolioAsset[] = Object.entries(normalized || {})
+               .filter(([sym, val]: any) => {
+                  const actual = Number(val?.actual) || 0;
+                  const orders = Number(val?.orders) || 0;
+                  return (actual + orders) > 0;
+               })
+               .map(([sym, val]: any) => {
+                  const symbol = sym;
+                  const actual = Number(val?.actual) || 0;
+                  const orders = Number(val?.orders) || 0;
+                  const pairMatch = pairs.find(p => p.base === symbol) || pairs.find(p => p.symbol.startsWith(symbol + '/'));
+                  const price = pairMatch ? Number(pairMatch.price) : 0;
+                  const existing = assets.find(a => a.symbol === symbol);
+                  return {
+                     symbol,
+                     name: existing?.name || symbol,
+                     amount: actual + orders,
+                     valueUsd: (actual + orders) * price,
+                     color: existing?.color || '#374151'
+                  } as PortfolioAsset;
+               });
+            setAssets(mappedAssets);
+         } catch (err) {
+            // eslint-disable-next-line no-console
+            console.warn('Failed to refresh balances', err);
+         }
+      })();
+   }, [pairs, assets]);
 
   const handleFastSwap = useCallback((from: string, to: string, amount: number) => {
      if (!user) {
@@ -420,7 +674,7 @@ const App: React.FC = () => {
               )}
 
               {/* PROFESSIONAL TRADING INTERFACE */}
-              {currentView === AppView.TRADING && (
+                     {currentView === AppView.TRADING && (
                 <div className="h-full flex flex-col bg-deti-bg/90 backdrop-blur-md text-deti-text">
                   
                   {/* PRO TRADING HEADER */}
@@ -540,7 +794,10 @@ const App: React.FC = () => {
                                 <button className="px-3 py-1 text-xs font-medium text-deti-subtext hover:text-white">Favorites</button>
                              </div>
                              <div className="flex-1 relative">
-                                <TradingChart data={chartData} symbol={liveSelectedPair.symbol} isDarkMode={true} />
+                                                {/* Fix REason: Wrap TradingChart with ErrorBoundary to avoid whole-app crashes if chart fetch/render fails */}
+                                                <ErrorBoundary>
+                                                   <TradingChart data={chartData} symbol={liveSelectedPair.symbol} isDarkMode={true} />
+                                                </ErrorBoundary>
                              </div>
                           </div>
                           {/* Bottom Panel (History) */}
@@ -590,13 +847,19 @@ const App: React.FC = () => {
 
               {currentView === AppView.WALLET && (
                  <div className="h-full overflow-y-auto">
-                    <Wallet 
-                       assets={assets} 
-                       walletAddresses={walletAddresses}
-                       onGenerateAddress={handleGenerateAddressClick}
-                       onWithdraw={handleWalletWithdraw}
-                       onDeposit={handleWalletDeposit}
-                    />
+                    {/* Fix REason: Isolate wallet render with ErrorBoundary so a wallet-specific failure doesn't crash the whole app */}
+                    <ErrorBoundary>
+                      <Wallet 
+                         assets={assets} 
+                         walletAddresses={walletAddresses}
+                         balancesMap={balancesMap}
+                         onRefreshBalances={refreshBalances}
+                         balancesLastUpdated={balancesLastUpdated}
+                         onGenerateAddress={handleGenerateAddressClick}
+                         onWithdraw={handleWalletWithdraw}
+                         onDeposit={handleWalletDeposit}
+                      />
+                    </ErrorBoundary>
                  </div>
               )}
 
