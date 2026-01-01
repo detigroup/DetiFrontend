@@ -34,6 +34,62 @@ const generateMockAddress = (symbol: string, standard: string): string => {
   return `0x${hex(40)}`; // Default
 };
 
+// Deterministic address generator for mock per-user wallets
+const hashStringToInt = (s: string) => {
+   let h = 2166136261 >>> 0;
+   for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+   }
+   return h >>> 0;
+};
+
+const seededHex = (seed: number, len: number) => {
+   let value = seed >>> 0;
+   const out: string[] = [];
+   for (let i = 0; i < len; i++) {
+      value = (value * 1664525 + 1013904223) >>> 0; // LCG
+      out.push((value & 0xf).toString(16));
+   }
+   return out.join('');
+};
+
+const seededAlpha = (seed: number, len: number) => {
+   let value = seed >>> 0;
+   const out: string[] = [];
+   for (let i = 0; i < len; i++) {
+      value = (value * 1664525 + 1013904223) >>> 0;
+      out.push(String.fromCharCode(97 + (value % 26)));
+   }
+   return out.join('');
+};
+
+const generateDeterministicAddress = (userId: string, symbol: string, standard: string) => {
+   const baseSeed = hashStringToInt(userId + '::' + symbol + '::' + standard);
+   if (standard.includes('TRC20')) return `T${seededAlpha(baseSeed, 33)}`;
+   if (standard.includes('ERC20') || standard.includes('BEP20') || standard.includes('Arbitrum')) return `0x${seededHex(baseSeed, 40)}`;
+   if (symbol === 'BTC') return `bc1q${seededAlpha(baseSeed, 38)}`;
+   if (symbol === 'SOL') return `${seededAlpha(baseSeed, 44)}`;
+   return `0x${seededHex(baseSeed, 40)}`;
+};
+
+const generateWalletsForUser = (userId: string) => {
+   const wallets: Record<string, Record<string, string>> = {};
+   try {
+      Object.keys((COIN_NETWORKS as Record<string, any>) || {}).forEach((sym) => {
+         const nets = COIN_NETWORKS[sym];
+         if (!nets || nets.length === 0) return;
+         wallets[sym] = {};
+         nets.forEach(net => {
+            wallets[sym][net.id] = generateDeterministicAddress(userId, sym, net.standard);
+         });
+      });
+   } catch (e) {
+      // fallback empty
+   }
+   return wallets;
+};
+
 // Debug toggle (set VITE_DEBUG=true to enable verbose logs)
 const isDebug = String((import.meta as any)?.env?.VITE_DEBUG || 'false').toLowerCase() === 'true';
 const maskToken = (token: string) => token ? `${token.slice(0, 6)}...${token.slice(-4)}` : 'none';
@@ -51,6 +107,17 @@ const resolveAuthToken = (): { token: string; source: string; cookieJwt: string;
    const token = lsToken || cookieJwtFront || cookieJwt;
    const source = lsToken ? 'localStorage' : (cookieJwtFront ? 'cookie:jwt_front' : (cookieJwt ? 'cookie:jwt' : 'none'));
    return { token, source, cookieJwt, cookieJwtFront, lsToken };
+};
+
+// Decide whether to include credentials when calling the API.
+const shouldIncludeCredentialsForApi = (apiBase: string) => {
+   try {
+      if (!apiBase) return true; // relative path -> same origin
+      const apiOrigin = new URL(String(apiBase)).origin;
+      return typeof window !== 'undefined' && window.location.origin === apiOrigin;
+   } catch (e) {
+      return false;
+   }
 };
 
 // Helper to fetch from Binance
@@ -140,15 +207,35 @@ const App: React.FC = () => {
 
   // Auth Handlers - Memoized
   const handleLogin = useCallback((userProfile: UserProfile) => {
+      // Set the new user and switch to dashboard
       setUser(userProfile);
       setIsAuthModalOpen(false);
       setView(AppView.DASHBOARD);
-      
-      // Set jwt cookie after successful login
+
+      // Clear any stale data from previous session so the UI doesn't flash old info
+      setBalancesMap({});
+      setBalancesLastUpdated(null);
+      setAssets([]);
+      setPortfolioBalance(0);
+      setPortfolioBalanceLoading(true);
+      // Prepopulate deterministic mock wallets for this user
+      setWalletAddresses(generateWalletsForUser(userProfile.id));
+
+      // Set jwt cookie after successful login (if token already persisted by AuthModal)
       const token = localStorage.getItem('jwt') || localStorage.getItem('token') || localStorage.getItem('jwt_auth_token') || '';
       if (token && typeof document !== 'undefined') {
         document.cookie = `jwt=${token}; path=/; max-age=86400; SameSite=Lax`;
-            try { localStorage.setItem('jwt', token); localStorage.setItem('token', token); } catch {}
+        try { localStorage.setItem('jwt', token); localStorage.setItem('token', token); } catch {}
+      }
+
+      // After successful login, trigger background refreshes and update markets
+      // Refresh balances immediately so Dashboard shows the correct user's data as soon as possible.
+      try {
+         // refreshBalances is defined later in the component but will be available at runtime
+         // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         (refreshBalances as any) && (refreshBalances as any)();
+      } catch (e) {
+         // ignore - best-effort refresh
       }
 
       // After successful login, fetch latest coins list and populate top markets
@@ -363,7 +450,8 @@ const App: React.FC = () => {
                         lsToken: maskToken(lsToken)
                      });
                   }
-            const res = await fetch(url, { method: 'GET', headers, credentials: 'include' });
+            const credentialsMode = shouldIncludeCredentialsForApi(apiBase) ? 'include' : 'omit';
+            const res = await fetch(url, { method: 'GET', headers, credentials: credentialsMode });
             if (!mounted) return;
             if (!res.ok) return;
             const data = await res.json();
@@ -419,7 +507,8 @@ const App: React.FC = () => {
                });
             }
 
-            const res = await fetch(url, { method: 'GET', headers, credentials: 'include' });
+            const credentialsMode = shouldIncludeCredentialsForApi(apiBase) ? 'include' : 'omit';
+            const res = await fetch(url, { method: 'GET', headers, credentials: credentialsMode });
             if (!mounted) return;
             if (!res.ok) {
                setPortfolioBalanceLoading(false);
@@ -508,7 +597,8 @@ const App: React.FC = () => {
                         lsToken: maskToken(lsToken)
                      });
                   }
-            const res = await fetch(url, { method: 'GET', headers, credentials: 'include' });
+            const credentialsMode = shouldIncludeCredentialsForApi(apiBase) ? 'include' : 'omit';
+            const res = await fetch(url, { method: 'GET', headers, credentials: credentialsMode });
             if (!res.ok) return;
             const data = await res.json();
             const normalized = (data && (data.balance || data.balances)) ? (data.balance || data.balances) : data;

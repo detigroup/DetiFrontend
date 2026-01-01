@@ -15,6 +15,15 @@ export default defineConfig(({ mode }) => {
             target: apiTarget,
             changeOrigin: true,
             secure: false,
+            // keep credentials in dev by forwarding cookie headers
+            configure: (proxy) => {
+              proxy.on('proxyReq', (proxyReq, req, res) => {
+                // ensure cookie header from browser is forwarded
+                if (req.headers.cookie) {
+                  proxyReq.setHeader('cookie', req.headers.cookie as string);
+                }
+              });
+            },
             rewrite: (p) => p.replace(/^\/api/, '/api'),
           },
         },
