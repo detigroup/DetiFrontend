@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppView } from '../types';
 import { Wallet, Bell, Search, Menu } from 'lucide-react';
 
@@ -9,6 +9,25 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ currentView, setView }) => {
+  const [language, setLanguage] = useState<'en' | 'vi' | 'ar'>(() => {
+    try {
+      return (localStorage.getItem('deti_lang') as any) || 'en';
+    } catch {
+      return 'en';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('deti_lang', language);
+    } catch {
+      /* no-op */
+    }
+    document.documentElement.lang = language;
+    document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+    window.dispatchEvent(new CustomEvent('deti-lang-change', { detail: language }));
+  }, [language]);
+
   return (
     <header className="h-16 border-b border-deti-border bg-deti-bg/95 backdrop-blur-md sticky top-0 z-50 flex items-center justify-between px-4 lg:px-6">
       <div className="flex items-center gap-8">
@@ -64,6 +83,16 @@ export const Header: React.FC<HeaderProps> = ({ currentView, setView }) => {
 
         {/* Actions */}
         <div className="flex items-center gap-3">
+          <select
+            aria-label="Select language"
+            value={language}
+            onChange={(e) => setLanguage(e.target.value as any)}
+            className="hidden md:inline-block bg-deti-card border border-deti-border text-deti-text text-xs rounded-md px-2 py-1 hover:border-deti-primary transition-colors"
+          >
+            <option value="en">EN</option>
+            <option value="vi">VI</option>
+            <option value="ar">AR</option>
+          </select>
           <button className="p-2 rounded-full hover:bg-deti-surface text-deti-subtext hover:text-deti-text transition-colors">
             <Bell className="w-5 h-5" />
           </button>

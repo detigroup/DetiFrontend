@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserProfile } from '../types';
-import { X, Mail, Phone, Lock, Eye, EyeOff, ArrowRight, Loader2, Globe } from 'lucide-react';
+import { X, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Globe } from 'lucide-react';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -11,7 +11,6 @@ interface AuthModalProps {
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [method, setMethod] = useState<'email' | 'phone'>('email');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
    const [recaptchaChecked, setRecaptchaChecked] = useState(false);
@@ -80,18 +79,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
    const t = (key: string) => (translations[language] && translations[language][key]) || translations['en'][key];
 
   // Form State
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [country, setCountry] = useState('United Arab Emirates');
 
-   // Reset recaptcha state when method or modal is reopened (do NOT reset while typing password)
+   // Reset recaptcha state when modal is reopened (do NOT reset while typing password)
    useEffect(() => {
       setRecaptchaChecked(false);
       setFormError(null);
-   }, [method, isOpen]);
+   }, [isOpen]);
 
-   // Persist language selection
+   // Persist language selection and respond to global language changes
    useEffect(() => {
       try { localStorage.setItem('deti_lang', language); } catch {}
       // set document dir for proper directionality when modal is open
@@ -100,6 +98,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
          document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
       }
    }, [language, isOpen]);
+
+   useEffect(() => {
+      const handler = (event: Event) => {
+         const detail = (event as CustomEvent<string>).detail;
+         if (typeof detail === 'string') {
+            setLanguage(detail as any);
+         } else {
+            try {
+               const stored = (localStorage.getItem('deti_lang') as any) || 'en';
+               setLanguage(stored);
+            } catch {
+               /* no-op */
+            }
+         }
+      };
+      window.addEventListener('deti-lang-change', handler as EventListener);
+      return () => window.removeEventListener('deti-lang-change', handler as EventListener);
+   }, []);
 
   if (!isOpen) return null;
 
@@ -123,9 +139,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
             const payload: Record<string, any> = {
                password,
                recaptcha: recaptchaChecked,
+               email,
             };
-            if (method === 'email') payload.email = email;
-            if (method === 'phone') payload.phone = phone;
 
             const res = await fetch(url, {
                method: 'POST',
@@ -189,9 +204,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
             const userRaw = data.user || data.data || data.profile || data;
             const mapped: UserProfile = {
                id: userRaw?.id?.toString() || userRaw?.uuid || 'USR-' + Math.floor(Math.random() * 10000),
-               name: userRaw?.name || userRaw?.username || (email ? email.split('@')[0] : `User ${phone.slice(-4)}`),
-               email: userRaw?.email || (method === 'email' ? email : undefined),
-               phone: userRaw?.phone || (method === 'phone' ? phone : undefined),
+               name: userRaw?.name || userRaw?.username || (email ? email.split('@')[0] : 'User'),
+               email: userRaw?.email || email,
+               phone: userRaw?.phone,
                kycStatus: userRaw?.kycStatus || userRaw?.kyc_status || 'Unverified',
                tier: userRaw?.tier ?? 0,
                avatar: userRaw?.avatar || userRaw?.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`
@@ -213,9 +228,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
       setTimeout(() => {
          const mockUser: UserProfile = {
             id: 'USR-' + Math.floor(Math.random() * 10000),
-            name: method === 'email' ? email.split('@')[0] : 'User ' + phone.slice(-4),
-            email: method === 'email' ? email : undefined,
-            phone: method === 'phone' ? phone : undefined,
+            name: email ? email.split('@')[0] : 'User',
+            email,
             kycStatus: 'Unverified',
             tier: 0,
             avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`
@@ -228,19 +242,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
 
   const handleGoogleLogin = () => {
     setLoading(true);
-    setTimeout(() => {
-       const mockUser: UserProfile = {
-        id: 'GOOG-' + Math.floor(Math.random() * 10000),
-        name: 'Google User',
-        email: 'user@gmail.com',
-        kycStatus: 'Unverified',
-        tier: 0,
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Google'
-      };
-      setLoading(false);
-      onLogin(mockUser);
-      onClose();
-    }, 2000);
+      setTimeout(() => {
+         const mockUser: UserProfile = {
+            id: 'USR-' + Math.floor(Math.random() * 10000),
+            name: email ? email.split('@')[0] : 'User',
+            email,
+            kycStatus: 'Unverified',
+            tier: 0,
+         };
+         setLoading(false);
+         onLogin(mockUser);
+         onClose();
+      }, 1000);
   };
 
    const subtitleText = mode === 'login' ? '' : "Join the world's premium crypto exchange.";
@@ -269,37 +282,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
         </div>
 
             <div className={`p-8 ${language === 'ar' ? 'text-right' : ''}`}>
-                <div className="mb-6 flex items-start justify-between gap-4">
+                <div className="mb-6">
                      <div>
                         <h2 className="text-2xl font-bold text-white mb-1">{mode === 'login' ? t('signIn') : t('createAccount')}</h2>
                         {subtitleText && (
                            <p className="text-deti-subtext text-sm">{subtitleText}</p>
                         )}
                      </div>
-                     <div className="flex items-center gap-3">
-                        <select aria-label="Select language" value={language} onChange={(e) => setLanguage(e.target.value as any)} className="bg-white/5 text-xs text-white rounded-md px-2 py-1 border border-white/10">
-                           <option value="en">English</option>
-                           <option value="vi">Tiếng Việt</option>
-                           <option value="ar">العربية</option>
-                        </select>
-                     </div>
                 </div>
-
-           {/* Method Tabs - Updated Active Color */}
-           <div className="flex p-1 bg-white/5 rounded-xl mb-6 border border-white/10">
-              <button 
-                onClick={() => setMethod('email')}
-                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${method === 'email' ? 'bg-deti-primary text-white shadow-glow' : 'text-deti-subtext hover:text-white'}`}
-              >
-                Email
-              </button>
-              <button 
-                onClick={() => setMethod('phone')}
-                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${method === 'phone' ? 'bg-deti-primary text-white shadow-glow' : 'text-deti-subtext hover:text-white'}`}
-              >
-                Phone
-              </button>
-           </div>
 
            <form onSubmit={handleSubmit} className="space-y-4">
               
@@ -328,37 +318,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                 </div>
               )}
 
-              {method === 'email' ? (
-                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-deti-subtext uppercase ml-1">{t('emailAddress')}</label>
-                    <div className="relative group">
-                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-deti-subtext group-focus-within:text-deti-primary transition-colors" />
-                       <input 
-                         type="email" 
-                         required
-                         value={email}
-                         onChange={(e) => setEmail(e.target.value)}
-                         className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm text-white focus:border-deti-primary outline-none transition-all"
-                         placeholder="name@example.com"
-                       />
-                    </div>
-                         </div>
-              ) : (
-                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-deti-subtext uppercase ml-1">{t('phoneNumber')}</label>
-                    <div className="relative group">
-                       <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-deti-subtext group-focus-within:text-deti-primary transition-colors" />
-                       <input 
-                         type="tel" 
-                         required
-                         value={phone}
-                         onChange={(e) => setPhone(e.target.value)}
-                         className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm text-white focus:border-deti-primary outline-none transition-all"
-                         placeholder="+1 234 567 8900"
-                       />
-                    </div>
+              <div className="space-y-1">
+                 <label className="text-xs font-bold text-deti-subtext uppercase ml-1">{t('emailAddress')}</label>
+                 <div className="relative group">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-deti-subtext group-focus-within:text-deti-primary transition-colors" />
+                    <input 
+                      type="email" 
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm text-white focus:border-deti-primary outline-none transition-all"
+                      placeholder="name@example.com"
+                    />
                  </div>
-              )}
+              </div>
 
               <div className="space-y-1">
                  <label className="text-xs font-bold text-deti-subtext uppercase ml-1">{t('password')}</label>
