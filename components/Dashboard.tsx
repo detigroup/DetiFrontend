@@ -3,7 +3,8 @@ import { MarketPair, PortfolioAsset, CryptoNetwork } from '../types';
 import { COIN_NETWORKS } from '../constants';
 import { 
    ArrowUpRight, MoreHorizontal, ArrowRightLeft, CreditCard, Wallet, RefreshCw,
-   ArrowDownLeft, X, ChevronDown, CheckCircle2, Copy, AlertCircle, RefreshCcw, Server, ShieldCheck, Plus, Lock, QrCode
+   ArrowDownLeft, X, ChevronDown, CheckCircle2, Copy, AlertCircle, RefreshCcw, Server, ShieldCheck, Plus, Lock, QrCode,
+   Eye, EyeOff
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -29,6 +30,20 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({
    const [sortField, setSortField] = useState<'asset'|'price'|'change'|'marketCap'>('marketCap');
    const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc');
   
+  // Balance visibility state (persisted in localStorage)
+  const [isBalanceVisible, setIsBalanceVisible] = useState<boolean>(() => {
+    const stored = localStorage.getItem('balanceVisible');
+    return stored === null ? true : stored === 'true';
+  });
+
+  const toggleBalanceVisibility = () => {
+    setIsBalanceVisible(prev => {
+      const newValue = !prev;
+      localStorage.setItem('balanceVisible', String(newValue));
+      return newValue;
+    });
+  };
+
   // Modal State
   const [modalType, setModalType] = useState<'deposit' | 'withdraw' | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<PortfolioAsset | null>(null);
@@ -123,40 +138,32 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({
           
           <div className="relative z-10 flex-1 flex flex-col">
              <div className="flex justify-between items-center mb-6">
-                <div>
-                   <h2 className="text-deti-subtext text-sm font-medium uppercase tracking-wide">Total Balance</h2>
+                <div className="flex-1">
+                   <div className="flex items-center gap-2 mb-2">
+                      <h2 className="text-deti-subtext text-sm font-medium uppercase tracking-wide">Total Balance</h2>
+                      <button 
+                        onClick={toggleBalanceVisibility}
+                        className="p-1.5 hover:bg-white/10 rounded-lg text-deti-subtext hover:text-white transition-colors"
+                        title={isBalanceVisible ? "Hide balance" : "Show balance"}
+                      >
+                        {isBalanceVisible ? <Eye size={16} /> : <EyeOff size={16} />}
+                      </button>
+                   </div>
                    <div className="flex items-center gap-2">
-                      <span className="text-4xl lg:text-5xl font-bold text-white tracking-tight mt-1">
+                      <span className="text-4xl lg:text-5xl font-bold text-white tracking-tight">
                          {portfolioBalanceLoading ? (
                             <span className="animate-pulse">Loading...</span>
-                         ) : (
+                         ) : isBalanceVisible ? (
                             `$${displayBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                         ) : (
+                            <span className="tracking-wider">********</span>
                          )}
-                      </span>
-                      <span className="bg-deti-success/20 text-deti-success text-xs font-bold px-2 py-1 rounded-full flex items-center mt-2">
-                         <ArrowUpRight size={12} className="mr-0.5" /> +2.4%
                       </span>
                    </div>
                 </div>
                 <button className="p-2 hover:bg-white/10 rounded-full text-white transition-colors">
                    <MoreHorizontal />
                 </button>
-             </div>
-
-             {/* Quick Stats Row */}
-             <div className="grid grid-cols-3 gap-4 mb-6">
-                <div>
-                   <div className="text-xs text-deti-subtext mb-1">P&L (Today)</div>
-                   <div className="text-deti-success font-bold">+$1,240.50</div>
-                </div>
-                <div>
-                   <div className="text-xs text-deti-subtext mb-1">Margin Used</div>
-                   <div className="text-white font-bold">12.5%</div>
-                </div>
-                <div>
-                   <div className="text-xs text-deti-subtext mb-1">Open Orders</div>
-                   <div className="text-white font-bold">4</div>
-                </div>
              </div>
 
              {/* Action Buttons - Moved to bottom */}
