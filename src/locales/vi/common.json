@@ -1,0 +1,76 @@
+{
+  "nav": {
+    "markets": "Thị trường",
+    "spot": "Giao ngay",
+    "rwa": "Tài sản thực",
+    "wallet": "Ví",
+    "earn": "Kiếm",
+    "vip": "VIP"
+  },
+  "hero": {
+    "title": {
+      "worlds": "Sàn giao dịch",
+      "globalCrypto": "tiền số toàn cầu",
+      "exchange": "hàng đầu."
+    },
+    "subtitle": "Mua, giao dịch và nắm giữ hơn 350 loại tiền số trên DETI HOLD. Trải nghiệm bảo mật chuẩn vàng và thanh khoản sâu trên toàn cầu.",
+    "ctaStart": "Bắt đầu giao dịch",
+    "ctaSignup": "Đăng ký / Đăng nhập"
+  },
+  "features": {
+    "globalReach": {
+      "title": "Phủ sóng toàn cầu",
+      "desc": "Hoạt động tại 180+ quốc gia với hỗ trợ đa ngôn ngữ 24/7. Cổng vào nền kinh tế số quốc tế của bạn."
+    },
+    "deepLiquidity": {
+      "title": "Thanh khoản sâu",
+      "desc": "Thực hiện lệnh lớn không trượt giá. Công cụ khớp lệnh xử lý hơn 1 triệu giao dịch mỗi giây."
+    },
+    "bankGradeSecurity": {
+      "title": "Bảo mật chuẩn ngân hàng",
+      "desc": "Bằng chứng dự trữ 100%. Tài sản được lưu ký 1:1 trong kho lạnh an toàn với mã hóa nâng cao."
+    }
+  },
+  "about": {
+    "label": "Về chúng tôi",
+    "headingPrefix": "DETI HOLD được phát triển và vận hành bởi",
+    "headingBrand": "AD Digital Payment Dubai",
+    "paragraph": "Đặt trụ sở tại trung tâm tài chính năng động Dubai, chúng tôi xây dựng hạ tầng tài chính an toàn của tương lai dưới các tiêu chuẩn quản lý cao nhất.",
+    "missionTitle": "Sứ mệnh",
+    "missionDesc": "Thúc đẩy quá trình chuyển đổi sang tiền mã hóa bằng một nền tảng an toàn, đáng tin cậy và dễ tiếp cận cho mọi người. Chúng tôi tin vào tự do tài chính và sức mạnh của mạng lưới phi tập trung để định hình lại kinh tế toàn cầu.",
+    "pill": {
+      "transparency": "Minh bạch",
+      "innovation": "Đổi mới",
+      "securityCompliance": "An toàn & Tuân thủ"
+    }
+  },
+  "markets": {
+    "label": "Thị trường trực tiếp",
+    "heading": "Xu hướng thị trường",
+    "cta": "Xem tất cả thị trường"
+  },
+  "topbar": {
+    "searchPlaceholder": "Tìm kiếm...",
+    "login": "Đăng nhập",
+    "identityVerification": "Xác minh danh tính",
+    "profileSettings": "Cài đặt hồ sơ",
+    "logout": "Đăng xuất"
+  },
+  "auth": {
+    "signIn": "Đăng nhập",
+    "createAccount": "Tạo tài khoản",
+    "enterCredentials": "Nhập thông tin và xác minh reCAPTCHA để bật nút Đăng nhập.",
+    "emailAddress": "Địa chỉ Email",
+    "password": "Mật khẩu",
+    "forgotPassword": "Quên mật khẩu?",
+    "verifyRecaptcha": "Xác minh reCAPTCHA",
+    "imNotRobot": "TÔI KHÔNG PHẢI ROBOT",
+    "recaptchaRequired": "Vui lòng chọn 'TÔI KHÔNG PHẢI ROBOT' trước khi đăng nhập.",
+    "recaptchaHelper": "Nhấn Xác minh reCAPTCHA để bật nút Đăng nhập.",
+    "continueWith": "HOẶC TIẾP TỤC VỚI",
+    "signUpPrompt": "Chưa có tài khoản?",
+    "signUpAction": "Đăng ký",
+    "loginAction": "Đăng nhập",
+    "pleaseCheckToEnable": "Vui lòng chọn 'TÔI KHÔNG PHẢI ROBOT' để bật nút Đăng nhập."
+  }
+}

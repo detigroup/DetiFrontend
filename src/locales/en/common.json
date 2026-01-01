@@ -1,0 +1,76 @@
+{
+  "nav": {
+    "markets": "Markets",
+    "spot": "Spot",
+    "rwa": "RWA",
+    "wallet": "Wallet",
+    "earn": "Earn",
+    "vip": "VIP"
+  },
+  "hero": {
+    "title": {
+      "worlds": "The World's",
+      "globalCrypto": "Global Crypto",
+      "exchange": "Exchange."
+    },
+    "subtitle": "Buy, trade, and hold 350+ cryptocurrencies on DETI HOLD. Experience Gold-standard security and deep liquidity worldwide.",
+    "ctaStart": "Start Trading Now",
+    "ctaSignup": "Sign Up / Login"
+  },
+  "features": {
+    "globalReach": {
+      "title": "Global Reach",
+      "desc": "Operating in 180+ countries with 24/7 multilingual support. Your gateway to the international digital economy."
+    },
+    "deepLiquidity": {
+      "title": "Deep Liquidity",
+      "desc": "Execute large orders with zero slippage. Our matching engine handles 1M+ transactions per second."
+    },
+    "bankGradeSecurity": {
+      "title": "Bank-Grade Security",
+      "desc": "100% Proof of Reserves. User funds are held 1:1 in secure cold storage with advanced encryption."
+    }
+  },
+  "about": {
+    "label": "About Us",
+    "headingPrefix": "DETI HOLD is a product made and operated by",
+    "headingBrand": "AD Digital Payment Dubai",
+    "paragraph": "Headquartered in the dynamic financial hub of Dubai, we are building the secure financial infrastructure of tomorrow under the highest regulatory standards.",
+    "missionTitle": "Our Mission",
+    "missionDesc": "To accelerate the world's transition to cryptocurrency by providing a secure, reliable, and accessible platform for everyone. We believe in financial freedom and the power of decentralized networks to reshape the global economy.",
+    "pill": {
+      "transparency": "Transparency",
+      "innovation": "Innovation",
+      "securityCompliance": "Security & Compliance"
+    }
+  },
+  "markets": {
+    "label": "Live Markets",
+    "heading": "Market Trends",
+    "cta": "View All Markets"
+  },
+  "topbar": {
+    "searchPlaceholder": "Search...",
+    "login": "Login",
+    "identityVerification": "Identity Verification",
+    "profileSettings": "Profile Settings",
+    "logout": "Log Out"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "createAccount": "Create Account",
+    "enterCredentials": "Enter your credentials and verify the reCAPTCHA to enable the Sign In button.",
+    "emailAddress": "Email Address",
+    "password": "Password",
+    "forgotPassword": "Forgot Password?",
+    "verifyRecaptcha": "Verify reCAPTCHA",
+    "imNotRobot": "I'M NOT A ROBOT",
+    "recaptchaRequired": "Please check 'I'M NOT A ROBOT' before signing in.",
+    "recaptchaHelper": "Click Verify reCAPTCHA to enable Sign In.",
+    "continueWith": "OR CONTINUE WITH",
+    "signUpPrompt": "Don't have an account?",
+    "signUpAction": "Sign Up",
+    "loginAction": "Log In",
+    "pleaseCheckToEnable": "Please check 'I'M NOT A ROBOT' to enable the Sign In button."
+  }
+}

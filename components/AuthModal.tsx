@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile } from '../types';
 import { X, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Globe } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -10,73 +11,12 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
+  const { t, i18n } = useTranslation();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
    const [recaptchaChecked, setRecaptchaChecked] = useState(false);
    const [formError, setFormError] = useState<string | null>(null);
-   const [language, setLanguage] = useState<'en'|'vi'|'ar'>(() => {
-      try { return (localStorage.getItem('deti_lang') as any) || 'en'; } catch { return 'en'; }
-   });
-
-   const translations: Record<string, Record<string, string>> = {
-      en: {
-         signIn: 'Sign In',
-         createAccount: 'Create Account',
-         enterCredentials: 'Enter your credentials and verify the reCAPTCHA to enable the Sign In button.',
-         emailAddress: 'Email Address',
-         phoneNumber: 'Phone Number',
-         password: 'Password',
-         forgotPassword: 'Forgot Password?',
-         verifyRecaptcha: 'Verify reCAPTCHA',
-         imNotRobot: "I'M NOT A ROBOT",
-         recaptchaRequired: "Please check 'I'M NOT A ROBOT' before signing in.",
-         recaptchaHelper: 'Click Verify reCAPTCHA to enable Sign In.',
-         continueWith: 'OR CONTINUE WITH',
-         signUpPrompt: "Don't have an account?",
-         signUpAction: 'Sign Up',
-         loginAction: 'Log In',
-         pleaseCheckToEnable: "Please check 'I'M NOT A ROBOT' to enable the Sign In button."
-      },
-      vi: {
-         signIn: 'Đăng nhập',
-         createAccount: 'Tạo tài khoản',
-         enterCredentials: 'Nhập thông tin đăng nhập và xác minh reCAPTCHA để bật nút Đăng nhập.',
-         emailAddress: 'Địa chỉ Email',
-         phoneNumber: 'Số điện thoại',
-         password: 'Mật khẩu',
-         forgotPassword: 'Quên mật khẩu?',
-         verifyRecaptcha: 'Xác minh reCAPTCHA',
-         imNotRobot: 'TÔI KHÔNG PHẢI ROBOT',
-         recaptchaRequired: "Vui lòng chọn 'TÔI KHÔNG PHẢI ROBOT' trước khi đăng nhập.",
-         recaptchaHelper: 'Nhấn Xác minh reCAPTCHA để bật nút Đăng nhập.',
-         continueWith: 'HOẶC TIẾP TỤC VỚI',
-         signUpPrompt: 'Chưa có tài khoản?',
-         signUpAction: 'Đăng ký',
-         loginAction: 'Đăng nhập',
-         pleaseCheckToEnable: "Vui lòng chọn 'TÔI KHÔNG PHẢI ROBOT' để bật nút Đăng nhập."
-      },
-      ar: {
-         signIn: 'تسجيل الدخول',
-         createAccount: 'إنشاء حساب',
-         enterCredentials: 'أدخل بياناتك وقم بتأكيد reCAPTCHA لتمكين زر تسجيل الدخول.',
-         emailAddress: 'البريد الإلكتروني',
-         phoneNumber: 'رقم الهاتف',
-         password: 'كلمة المرور',
-         forgotPassword: 'هل نسيت كلمة المرور؟',
-         verifyRecaptcha: 'التحقق من reCAPTCHA',
-         imNotRobot: 'أنا لست روبوتًا',
-         recaptchaRequired: "يرجى تحديد 'أنا لست روبوتًا' قبل تسجيل الدخول.",
-         recaptchaHelper: 'انقر فوق التحقق من reCAPTCHA لتمكين تسجيل الدخول.',
-         continueWith: 'أو المتابعة عبر',
-         signUpPrompt: 'ليس لديك حساب؟',
-         signUpAction: 'اشتراك',
-         loginAction: 'تسجيل الدخول',
-         pleaseCheckToEnable: "يرجى تحديد 'أنا لست روبوتًا' لتمكين زر تسجيل الدخول."
-      }
-   };
-
-   const t = (key: string) => (translations[language] && translations[language][key]) || translations['en'][key];
 
   // Form State
    const [email, setEmail] = useState('');
@@ -89,34 +29,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
       setFormError(null);
    }, [isOpen]);
 
-   // Persist language selection and respond to global language changes
-   useEffect(() => {
-      try { localStorage.setItem('deti_lang', language); } catch {}
-      // set document dir for proper directionality when modal is open
-      if (isOpen) {
-         document.documentElement.lang = language;
-         document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
-      }
-   }, [language, isOpen]);
-
-   useEffect(() => {
-      const handler = (event: Event) => {
-         const detail = (event as CustomEvent<string>).detail;
-         if (typeof detail === 'string') {
-            setLanguage(detail as any);
-         } else {
-            try {
-               const stored = (localStorage.getItem('deti_lang') as any) || 'en';
-               setLanguage(stored);
-            } catch {
-               /* no-op */
-            }
-         }
-      };
-      window.addEventListener('deti-lang-change', handler as EventListener);
-      return () => window.removeEventListener('deti-lang-change', handler as EventListener);
-   }, []);
-
   if (!isOpen) return null;
 
    const handleSubmit = async (e: React.FormEvent) => {
@@ -126,7 +38,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
 
       if (mode === 'login') {
          if (!recaptchaChecked) {
-            setFormError(t('recaptchaRequired'));
+            setFormError(t('auth.recaptchaRequired'));
             setLoading(false);
             return;
          }
@@ -256,7 +168,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
       }, 1000);
   };
 
-   const subtitleText = mode === 'login' ? '' : "Join the world's premium crypto exchange.";
+   const subtitleText = mode === 'login' ? t('auth.enterCredentials') : '';
+   const direction = i18n.dir();
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -264,7 +177,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose}></div>
 
       {/* Modal Content with glassmorphism */}
-      <div dir={language === 'ar' ? 'rtl' : 'ltr'} lang={language} className="relative bg-[#181920]/90 backdrop-blur-xl border border-white/10 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+      <div dir={direction} lang={i18n.language} className="relative bg-[#181920]/90 backdrop-blur-xl border border-white/10 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* Header Image/Banner - Updated Background for Contrast */}
         <div className="h-32 bg-[#111218] relative overflow-hidden border-b border-white/5">
@@ -281,10 +194,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
            </button>
         </div>
 
-            <div className={`p-8 ${language === 'ar' ? 'text-right' : ''}`}>
+            <div className={`p-8 ${direction === 'rtl' ? 'text-right' : ''}`}>
                 <div className="mb-6">
                      <div>
-                        <h2 className="text-2xl font-bold text-white mb-1">{mode === 'login' ? t('signIn') : t('createAccount')}</h2>
+                        <h2 className="text-2xl font-bold text-white mb-1">{mode === 'login' ? t('auth.signIn') : t('auth.createAccount')}</h2>
                         {subtitleText && (
                            <p className="text-deti-subtext text-sm">{subtitleText}</p>
                         )}
@@ -319,7 +232,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
               )}
 
               <div className="space-y-1">
-                 <label className="text-xs font-bold text-deti-subtext uppercase ml-1">{t('emailAddress')}</label>
+                 <label className="text-xs font-bold text-deti-subtext uppercase ml-1">{t('auth.emailAddress')}</label>
                  <div className="relative group">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-deti-subtext group-focus-within:text-deti-primary transition-colors" />
                     <input 
@@ -334,7 +247,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
               </div>
 
               <div className="space-y-1">
-                 <label className="text-xs font-bold text-deti-subtext uppercase ml-1">{t('password')}</label>
+                 <label className="text-xs font-bold text-deti-subtext uppercase ml-1">{t('auth.password')}</label>
                  <div className="relative group">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-deti-subtext group-focus-within:text-deti-primary transition-colors" />
                     <input 
@@ -364,7 +277,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                                     onChange={(e) => setRecaptchaChecked(e.target.checked)}
                                     className="w-4 h-4 accent-deti-primary"
                                  />
-                                 <span className="font-medium select-none">{t('imNotRobot')}</span>
+                                 <span className="font-medium select-none">{t('auth.imNotRobot')}</span>
                               </label>
                            </div>
                         )}
@@ -380,21 +293,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                        >
                           {loading ? <Loader2 className="animate-spin w-5 h-5" /> : (
                              <>
-                                {mode === 'login' ? t('loginAction') : t('createAccount')} <ArrowRight size={18} />
+                                {mode === 'login' ? t('auth.loginAction') : t('auth.createAccount')} <ArrowRight size={18} />
                              </>
                           )}
                        </button>
 
               {mode === 'login' && (
                  <div className="flex justify-end mt-2">
-                    <a href="#" className="text-xs text-deti-primary hover:text-deti-secondary font-medium transition-colors">{t('forgotPassword')}</a>
+                    <a href="#" className="text-xs text-deti-primary hover:text-deti-secondary font-medium transition-colors">{t('auth.forgotPassword')}</a>
                  </div>
               )}
            </form>
 
            <div className="relative my-6 text-center">
               <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
-              <span className="relative bg-[#181920] px-4 text-xs text-deti-subtext rounded">{t('continueWith')}</span>
+              <span className="relative bg-[#181920] px-4 text-xs text-deti-subtext rounded">{t('auth.continueWith')}</span>
            </div>
 
            <button 
@@ -413,12 +326,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
            </button>
 
            <div className="mt-6 text-center text-sm text-deti-subtext">
-              {mode === 'login' ? `${t('signUpPrompt')} ` : `${t('signUpPrompt')} `}
+              {mode === 'login' ? `${t('auth.signUpPrompt')} ` : `${t('auth.signUpPrompt')} `}
               <button 
                 onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
                 className="text-deti-primary font-bold hover:underline"
               >
-                 {mode === 'login' ? t('signUpAction') : t('loginAction')}
+                 {mode === 'login' ? t('auth.signUpAction') : t('auth.loginAction')}
               </button>
            </div>
         </div>
