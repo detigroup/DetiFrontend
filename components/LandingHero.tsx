@@ -1,9 +1,10 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { AppView } from '../types';
 import { MOCK_PAIRS } from '../constants';
+import { useTranslation } from 'react-i18next';
 import { 
-  ArrowRight, Shield, Globe, TrendingUp, Play, RefreshCw, Sun, Moon, Bell, ArrowUpRight, 
+   ArrowRight, Shield, Globe, TrendingUp, Play, RefreshCw, Sun, Moon, Bell, ArrowUpRight, ChevronDown,
   LayoutGrid, Wallet, Settings, ArrowRightLeft, CheckCircle2, 
   Award, Landmark, FileCheck, Star, Target, Gem,
   Facebook, Twitter, Instagram, Youtube, Linkedin, Send, MessageSquare, Gamepad2,
@@ -77,6 +78,30 @@ const RWA_ITEMS = [
 ];
 
 export const LandingHero: React.FC<LandingHeroProps> = ({ setView, isDarkMode, toggleTheme }) => {
+   const { t, i18n } = useTranslation();
+   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
+
+   const languages = useMemo(() => ([
+      { code: 'en', label: 'English' },
+      { code: 'vi', label: 'Tiếng Việt' }
+   ]), []);
+
+   const normalizedLang = (i18n.language || 'en').split('-')[0];
+   const activeLanguage = languages.find((lang) => lang.code === normalizedLang) || languages[0];
+
+   const navItems = useMemo(() => ([
+      { key: 'markets', label: t('nav.markets'), target: 'markets' },
+      { key: 'spot', label: t('nav.spot'), target: 'spot' },
+      { key: 'rwa', label: t('nav.rwa'), target: 'rwa' },
+      { key: 'wallet', label: t('nav.wallet'), target: 'wallet' },
+      { key: 'earn', label: t('nav.earn'), target: 'earn' },
+      { key: 'vip', label: t('nav.vip'), target: 'features' }
+   ]), [t]);
+
+   const handleLanguageChange = (code: string) => {
+      i18n.changeLanguage(code);
+      setShowLanguageMenu(false);
+   };
   
   useEffect(() => {
     // Initialize Unicorn Studio Script
@@ -170,25 +195,66 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ setView, isDarkMode, t
         
         <div className="flex items-center gap-4 md:gap-8">
             <div className="hidden md:flex items-center gap-8 text-xs font-medium text-deti-subtext uppercase tracking-widest">
-              {['Markets', 'Spot', 'RWA', 'Wallet', 'Earn', 'VIP'].map((item, i) => (
-                 <button 
-                   key={item} 
-                   onClick={(e) => {
-                      e.preventDefault();
-                      if (item === 'Wallet') scrollToSection('wallet');
-                      else if (item === 'Spot') scrollToSection('spot');
-                      else if (item === 'Markets') scrollToSection('markets');
-                      else if (item === 'Earn') scrollToSection('earn');
-                      else if (item === 'VIP') scrollToSection('features');
-                      else if (item === 'RWA') scrollToSection('rwa');
-                   }}
-                   className="hover:text-deti-primary transition-colors relative group"
-                 >
-                    {item}
-                    <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-deti-primary transition-all duration-300 group-hover:w-full"></span>
-                 </button>
-              ))}
+                     {navItems.map((item) => (
+                         <button 
+                            key={item.key} 
+                            onClick={(e) => {
+                                 e.preventDefault();
+                                 scrollToSection(item.target);
+                            }}
+                            className="hover:text-deti-primary transition-colors relative group"
+                         >
+                              {item.label}
+                              <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-deti-primary transition-all duration-300 group-hover:w-full"></span>
+                         </button>
+                     ))}
             </div>
+                  <div className="relative md:hidden">
+                     <button
+                        onClick={() => setShowLanguageMenu((prev) => !prev)}
+                        className="p-2 rounded-full border border-white/10 text-white/80 hover:text-white hover:border-deti-primary/60 transition-colors"
+                     >
+                        <Globe className="w-5 h-5" />
+                     </button>
+                     {showLanguageMenu && (
+                        <div className="absolute right-0 mt-2 w-40 bg-deti-card/90 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl py-1 z-50">
+                           {languages.map((lang) => (
+                              <button
+                                 key={lang.code}
+                                 onClick={() => handleLanguageChange(lang.code)}
+                                 className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between hover:bg-white/10 ${lang.code === activeLanguage.code ? 'text-white' : 'text-deti-subtext'}`}
+                              >
+                                 <span>{lang.label}</span>
+                                 {lang.code === activeLanguage.code && <CheckCircle2 size={14} className="text-deti-primary" />}
+                              </button>
+                           ))}
+                        </div>
+                     )}
+                  </div>
+                  <div className="relative hidden md:block">
+                     <button
+                        onClick={() => setShowLanguageMenu((prev) => !prev)}
+                        className="flex items-center gap-1 px-3 py-2 rounded-full border border-white/10 text-xs font-semibold text-white/80 hover:text-white hover:border-deti-primary/60 transition-colors"
+                     >
+                        <Globe className="w-4 h-4" />
+                        <span>{activeLanguage.label}</span>
+                        <ChevronDown size={12} className={`transition-transform ${showLanguageMenu ? 'rotate-180' : ''}`} />
+                     </button>
+                     {showLanguageMenu && (
+                        <div className="absolute right-0 mt-2 w-40 bg-deti-card/90 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl py-1 z-50">
+                           {languages.map((lang) => (
+                              <button
+                                 key={lang.code}
+                                 onClick={() => handleLanguageChange(lang.code)}
+                                 className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between hover:bg-white/10 ${lang.code === activeLanguage.code ? 'text-white' : 'text-deti-subtext'}`}
+                              >
+                                 <span>{lang.label}</span>
+                                 {lang.code === activeLanguage.code && <CheckCircle2 size={14} className="text-deti-primary" />}
+                              </button>
+                           ))}
+                        </div>
+                     )}
+                  </div>
             {toggleTheme && (
                <button 
                  onClick={toggleTheme}
@@ -201,7 +267,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ setView, isDarkMode, t
               onClick={() => setView(AppView.DASHBOARD)}
               className="shiny-cta focus:outline-none"
             >
-              <span className="!px-5 !py-2.5 md:!px-8 md:!py-3 text-xs md:text-sm font-semibold">Sign Up / Login</span>
+                     <span className="!px-5 !py-2.5 md:!px-8 md:!py-3 text-xs md:text-sm font-semibold">{t('hero.ctaSignup')}</span>
             </button>
         </div>
       </nav>
@@ -211,16 +277,16 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ setView, isDarkMode, t
          <div className="space-y-8">
             {/* Apple Style Header with Brand Gradient Highlight */}
             <h1 className="text-6xl md:text-7xl lg:text-8xl font-semibold leading-[1.05] tracking-tighter text-white">
-              <span className="block morph-reveal delay-100 bg-gradient-to-b from-white via-white to-white/70 bg-clip-text text-transparent">The World's</span>
+                     <span className="block morph-reveal delay-100 bg-gradient-to-b from-white via-white to-white/70 bg-clip-text text-transparent">{t('hero.title.worlds')}</span>
               <span className="block morph-reveal delay-200">
                 {/* Brand Orange/Gold Gradient */}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F59E0B] via-[#FCD34D] to-[#EA580C] animate-text-shimmer bg-[length:200%_auto]">Global Crypto</span>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F59E0B] via-[#FCD34D] to-[#EA580C] animate-text-shimmer bg-[length:200%_auto]">{t('hero.title.globalCrypto')}</span>
               </span>
-              <span className="block morph-reveal delay-300 bg-gradient-to-b from-white via-white to-white/70 bg-clip-text text-transparent">Exchange.</span>
+                     <span className="block morph-reveal delay-300 bg-gradient-to-b from-white via-white to-white/70 bg-clip-text text-transparent">{t('hero.title.exchange')}</span>
             </h1>
             
             <p className="morph-reveal delay-400 text-deti-subtext text-lg md:text-xl max-w-lg leading-relaxed font-light border-l-2 border-white/10 pl-6">
-              Buy, trade, and hold 350+ cryptocurrencies on <span className="text-white font-medium">DETI HOLD</span>. Experience <span className="text-gray-300 font-medium">Gold-standard</span> security and deep liquidity worldwide.
+                     {t('hero.subtitle')}
             </p>
             
             <div className="morph-reveal delay-500 flex items-center gap-4">
@@ -229,7 +295,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ setView, isDarkMode, t
                  className="shiny-cta focus:outline-none"
                >
                  <span className="">
-                   Start Trading Now <ArrowRight className="w-4 h-4 ml-1" />
+                            {t('hero.ctaStart')} <ArrowRight className="w-4 h-4 ml-1" />
                  </span>
                </button>
                
@@ -310,22 +376,22 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ setView, isDarkMode, t
                delay="100ms"
                color="gold"
                icon={<Globe className="w-6 h-6" />}
-               title="Global Reach"
-               desc="Operating in 180+ countries with 24/7 multilingual support. Your gateway to the international digital economy."
+               title={t('features.globalReach.title')}
+               desc={t('features.globalReach.desc')}
             />
             <GlowCard 
                delay="200ms"
                color="blue"
                icon={<TrendingUp className="w-6 h-6" />}
-               title="Deep Liquidity"
-               desc="Execute large orders with zero slippage. Our matching engine handles 1M+ transactions per second."
+               title={t('features.deepLiquidity.title')}
+               desc={t('features.deepLiquidity.desc')}
             />
             <GlowCard 
                delay="300ms"
                color="dark"
                icon={<Shield className="w-6 h-6" />}
-               title="Bank-Grade Security"
-               desc="100% Proof of Reserves. User funds are held 1:1 in secure cold storage with advanced encryption."
+               title={t('features.bankGradeSecurity.title')}
+               desc={t('features.bankGradeSecurity.desc')}
             />
          </div>
       </section>
@@ -335,13 +401,13 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ setView, isDarkMode, t
           <div className="max-w-7xl mx-auto px-6">
               <div className="mb-12 morph-reveal">
                   <span className="text-deti-secondary font-medium tracking-wide text-sm uppercase flex items-center gap-2">
-                      <div className="w-8 h-[1px] bg-deti-secondary"></div> About Us
+                    <div className="w-8 h-[1px] bg-deti-secondary"></div> {t('about.label')}
                   </span>
                   <h2 className="text-4xl md:text-5xl font-semibold tracking-tighter text-deti-text mt-3 max-w-4xl">
-                      DETI HOLD is a product made and operated by <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F59E0B] to-[#EA580C] whitespace-nowrap">AD Digital Payment Dubai</span>.
+                    {t('about.headingPrefix')} <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F59E0B] to-[#EA580C] whitespace-nowrap">{t('about.headingBrand')}</span>.
                   </h2>
                   <p className="text-deti-subtext text-lg mt-4 max-w-2xl">
-                      Headquartered in the dynamic financial hub of Dubai, we are building the secure financial infrastructure of tomorrow under the highest regulatory standards.
+                    {t('about.paragraph')}
                   </p>
               </div>
 
@@ -354,15 +420,14 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ setView, isDarkMode, t
                           <div className="w-12 h-12 bg-deti-primary/10 rounded-xl flex items-center justify-center mb-6 text-deti-primary border border-deti-primary/20">
                               <Target size={24} />
                           </div>
-                          <h3 className="text-2xl font-bold text-white mb-4">Our Mission</h3>
+                          <h3 className="text-2xl font-bold text-white mb-4">{t('about.missionTitle')}</h3>
                           <p className="text-deti-subtext leading-relaxed mb-6">
-                              To accelerate the world's transition to cryptocurrency by providing a secure, reliable, and accessible platform for everyone. We believe in financial freedom and the power of decentralized networks to reshape the global economy.
+                             {t('about.missionDesc')}
                           </p>
                           <div className="flex flex-wrap items-center gap-4 text-sm font-bold text-white">
-                              <span className="flex items-center gap-2"><CheckCircle2 size={16} className="text-deti-primary"/> Transparency</span>
-                              <span className="flex items-center gap-2"><CheckCircle2 size={16} className="text-deti-primary"/> Innovation</span>
-                              {/* Added Security & Compliance */}
-                              <span className="flex items-center gap-2"><CheckCircle2 size={16} className="text-deti-primary"/> Security & Compliance</span>
+                             <span className="flex items-center gap-2"><CheckCircle2 size={16} className="text-deti-primary"/> {t('about.pill.transparency')}</span>
+                             <span className="flex items-center gap-2"><CheckCircle2 size={16} className="text-deti-primary"/> {t('about.pill.innovation')}</span>
+                             <span className="flex items-center gap-2"><CheckCircle2 size={16} className="text-deti-primary"/> {t('about.pill.securityCompliance')}</span>
                           </div>
                       </div>
                   </div>
@@ -387,14 +452,14 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ setView, isDarkMode, t
               <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 morph-reveal">
                   <div>
                       <span className="text-deti-primary font-medium tracking-wide text-sm uppercase flex items-center gap-2">
-                          <div className="w-8 h-[1px] bg-deti-primary"></div> Live Markets
+                          <div className="w-8 h-[1px] bg-deti-primary"></div> {t('markets.label')}
                       </span>
                       <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tighter text-deti-text mt-3">
-                          Market Trends
+                          {t('markets.heading')}
                       </h2>
                   </div>
                   <button onClick={() => setView(AppView.TRADING)} className="group flex items-center gap-2 text-sm font-bold text-deti-subtext hover:text-white transition-colors">
-                      View All Markets 
+                       {t('markets.cta')} 
                       <span className="p-1 rounded-full bg-white/5 group-hover:bg-deti-primary group-hover:text-white transition-colors">
                         <ArrowRight size={14} />
                       </span>
