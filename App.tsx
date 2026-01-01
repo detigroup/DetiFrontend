@@ -745,6 +745,26 @@ const App: React.FC = () => {
                  />
               )}
 
+              {currentView === AppView.ORDERS && (
+                 <div className="h-full overflow-y-auto custom-scrollbar bg-deti-bg/60">
+                    <div className="p-6 lg:p-8 space-y-6 max-w-[1400px] mx-auto">
+                       <div className="flex items-center justify-between">
+                          <div>
+                             <h2 className="text-2xl font-bold text-white">Orders</h2>
+                             <p className="text-deti-subtext text-sm">Manage open and historical orders</p>
+                          </div>
+                       </div>
+                       <div className="bg-deti-card/70 border border-deti-border rounded-2xl overflow-hidden shadow-card">
+                          <OrderManagement 
+                             openOrders={openOrders} 
+                             orderHistory={orderHistory} 
+                             onCancelOrder={handleCancelOrder}
+                          />
+                       </div>
+                    </div>
+                 </div>
+              )}
+
               {/* PROFESSIONAL TRADING INTERFACE */}
                      {currentView === AppView.TRADING && (
                 <div className="h-full flex flex-col bg-deti-bg/90 backdrop-blur-md text-deti-text">

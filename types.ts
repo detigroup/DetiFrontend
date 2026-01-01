@@ -6,6 +6,7 @@ export enum AppView {
   DASHBOARD = 'DASHBOARD',
   WALLET = 'WALLET',
   SWAP = 'SWAP',
+  ORDERS = 'ORDERS',
   FEES = 'FEES',
   SETTINGS = 'SETTINGS',
   KYC = 'KYC',
