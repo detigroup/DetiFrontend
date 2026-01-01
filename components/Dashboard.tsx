@@ -16,11 +16,14 @@ interface DashboardProps {
   onGenerateAddress: (symbol: string, networkId: string, standard: string) => void;
   onWithdraw: (symbol: string, amount: number) => void;
   onDeposit: (symbol: string, amount: number) => void;
+   portfolioBalance?: number;
+   portfolioBalanceLoading?: boolean;
 }
-
 export const Dashboard: React.FC<DashboardProps> = React.memo(({ 
   assets, pairs, onNavigateToTrade, onFastSwap, isDarkMode = true,
-  walletAddresses, onGenerateAddress, onWithdraw, onDeposit
+   walletAddresses, onGenerateAddress, onWithdraw, onDeposit,
+   portfolioBalance = 0,
+   portfolioBalanceLoading = false
 }) => {
   const [swapAmount, setSwapAmount] = useState<string>('');
    const [sortField, setSortField] = useState<'asset'|'price'|'change'|'marketCap'>('marketCap');
@@ -37,7 +40,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({
   const [copied, setCopied] = useState(false);
   const [isGeneratingAddress, setIsGeneratingAddress] = useState(false);
 
-  const totalBalance = assets.reduce((acc, curr) => acc + curr.valueUsd, 0);
+   const displayBalance = portfolioBalance || 0;
    const axisColor = isDarkMode ? '#808191' : '#64748B'; // retained for future chart use
 
   const handleSwap = () => {
@@ -124,7 +127,11 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({
                    <h2 className="text-deti-subtext text-sm font-medium uppercase tracking-wide">Total Balance</h2>
                    <div className="flex items-center gap-2">
                       <span className="text-4xl lg:text-5xl font-bold text-white tracking-tight mt-1">
-                         ${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                         {portfolioBalanceLoading ? (
+                            <span className="animate-pulse">Loading...</span>
+                         ) : (
+                            `$${displayBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                         )}
                       </span>
                       <span className="bg-deti-success/20 text-deti-success text-xs font-bold px-2 py-1 rounded-full flex items-center mt-2">
                          <ArrowUpRight size={12} className="mr-0.5" /> +2.4%

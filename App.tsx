@@ -100,6 +100,9 @@ const App: React.FC = () => {
    // Balances fetched from backend /api/v1/balance/ (mapped by symbol)
    const [balancesMap, setBalancesMap] = useState<Record<string, { actual: number; orders: number }>>({});
    const [balancesLastUpdated, setBalancesLastUpdated] = useState<number | null>(null);
+   // Portfolio balance fetched from /api/v1/portfolio-balance/?currency=USDT
+   const [portfolioBalance, setPortfolioBalance] = useState<number>(0);
+   const [portfolioBalanceLoading, setPortfolioBalanceLoading] = useState<boolean>(false);
   
   // Wallet System State (Lifted for persistence)
   const [walletAddresses, setWalletAddresses] = useState<Record<string, Record<string, string>>>({});
@@ -374,6 +377,72 @@ const App: React.FC = () => {
       fetchBalances();
       return () => { mounted = false; };
    }, [currentView]);
+
+   // Fetch portfolio balance (sum of actual_usd > 0) from /api/v1/portfolio-balance/?currency=USDT
+   useEffect(() => {
+      if (currentView !== AppView.DASHBOARD) return;
+      let mounted = true;
+      const fetchPortfolioBalance = async () => {
+         try {
+            setPortfolioBalanceLoading(true);
+            const domainEnv = (import.meta as any)?.env?.VITE_API_DOMAIN || 'https://detidex.yeuthich.net';
+            const isLocalHost = typeof window !== 'undefined' && /localhost:300[01]/.test(window.location.host);
+            const apiBase = isLocalHost ? '' : String(domainEnv).replace(/\/$/, '');
+            const url = `${apiBase}/api/v1/portfolio-balance/?currency=USDT`;
+            const { token, source, cookieJwt, cookieJwtFront, lsToken } = resolveAuthToken();
+            if (!token) {
+               console.warn('Skipping portfolio balance fetch: no auth token found', {
+                  cookieJwtMasked: maskToken(cookieJwt),
+                  cookieJwtFrontMasked: maskToken(cookieJwtFront),
+                  lsTokenMasked: maskToken(lsToken)
+               });
+               setPortfolioBalanceLoading(false);
+               return;
+            }
+
+            const headers: Record<string, string> = {
+              'Accept': 'application/json, text/plain, */*',
+              'Accept-Encoding': 'gzip, deflate, br',
+              'Accept-Language': 'en-US,en;q=0.9'
+            };
+            headers['Authorization'] = `Bearer ${token}`;
+
+            if (isDebug) {
+               console.debug('[PortfolioBalance] Request debug', {
+                  url,
+                  headers,
+                  tokenMasked: maskToken(token),
+                  source,
+                  cookieJwt: maskToken(cookieJwt),
+                  cookieJwtFront: maskToken(cookieJwtFront),
+                  lsToken: maskToken(lsToken)
+               });
+            }
+
+            const res = await fetch(url, { method: 'GET', headers, credentials: 'include' });
+            if (!mounted) return;
+            if (!res.ok) {
+               setPortfolioBalanceLoading(false);
+               return;
+            }
+            const data = await res.json();
+            const payload = (data && (data.balance || data.balances)) ? (data.balance || data.balances) : data;
+            const items = Array.isArray(payload) ? payload : Object.values(payload || {});
+            const total = items.reduce((sum: number, item: any) => {
+               const value = Number(item?.actual_usd ?? item?.actualUSD ?? item?.actual_usdt ?? item);
+               return value > 0 ? sum + value : sum;
+            }, 0);
+            setPortfolioBalance(total);
+            setPortfolioBalanceLoading(false);
+         } catch (err) {
+            console.warn('Failed to fetch portfolio balance', err);
+            setPortfolioBalanceLoading(false);
+         }
+      };
+
+      fetchPortfolioBalance();
+      return () => { mounted = false; };
+   }, [currentView, user]);
 
    // Recalculate asset prices when balances or pairs change
    useEffect(() => {
@@ -664,6 +733,8 @@ const App: React.FC = () => {
                    onGenerateAddress={handleGenerateAddressClick}
                    onWithdraw={handleWalletWithdraw}
                    onDeposit={handleWalletDeposit}
+                   portfolioBalance={portfolioBalance}
+                   portfolioBalanceLoading={portfolioBalanceLoading}
                 />
               )}
 
