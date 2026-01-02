@@ -273,8 +273,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                avatar: userRaw?.avatar || userRaw?.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`
             };
 
-            onLogin(mapped);
-            onClose();
+            // After registration success, return user to login screen instead of auto-login
+            setLoading(false);
+            setMode('login');
          } catch (err: any) {
             console.error('Registration error', err);
             setFormError(err?.message || 'Network error during registration');
