@@ -85,7 +85,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
             const data = await res.json().catch(() => ({}));
 
             if (!res.ok) {
-               const msg = data?.message || data?.error || `Login failed (status ${res.status})`;
+               let msg = 'Login failed';
+               // Try to extract error message from various response formats
+               if (typeof data?.error === 'object' && Array.isArray(data.error) && data.error.length > 0) {
+                  // Handle error as array of objects with message/code
+                  msg = typeof data.error[0]?.message === 'string' ? data.error[0].message : (data.error[0]?.message ? JSON.stringify(data.error[0].message) : `Login failed (status ${res.status})`);
+               }
+               else if (typeof data?.message === 'string') msg = data.message;
+               else if (typeof data?.error === 'string') msg = data.error;
+               else if (typeof data?.detail === 'string') msg = data.detail;
+               else if (typeof data?.errors === 'object' && data.errors !== null) {
+                  // Handle array of errors or object with error details
+                  const errorKey = Object.keys(data.errors)[0];
+                  const errorValue = data.errors[errorKey];
+                  msg = typeof errorValue === 'string' ? errorValue : (Array.isArray(errorValue) ? errorValue[0] : `Login failed (status ${res.status})`);
+               }
+               else msg = data?.msg || `Login failed (status ${res.status})`;
                setFormError(msg);
                setLoading(false);
                return;
@@ -148,7 +163,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
             onClose();
          } catch (err: any) {
             console.error('Login error', err);
-            setFormError(err?.message || 'Network error during login');
+            const errMsg = typeof err?.message === 'string' ? err.message : 'Network error during login';
+            setFormError(errMsg);
             setLoading(false);
          }
 
@@ -213,7 +229,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
             const data = await res.json().catch(() => ({}));
 
             if (!res.ok) {
-               const msg = data?.message || data?.error || data?.detail || `Registration failed (status ${res.status})`;
+               let msg = 'Registration failed';
+               // Try to extract error message from various response formats
+               if (typeof data?.error === 'object' && Array.isArray(data.error) && data.error.length > 0) {
+                  // Handle error as array of objects with message/code
+                  msg = typeof data.error[0]?.message === 'string' ? data.error[0].message : (data.error[0]?.message ? JSON.stringify(data.error[0].message) : `Registration failed (status ${res.status})`);
+               }
+               else if (typeof data?.message === 'string') msg = data.message;
+               else if (typeof data?.error === 'string') msg = data.error;
+               else if (typeof data?.detail === 'string') msg = data.detail;
+               else if (typeof data?.errors === 'object' && data.errors !== null) {
+                  // Handle array of errors or object with error details
+                  const errorKey = Object.keys(data.errors)[0];
+                  const errorValue = data.errors[errorKey];
+                  msg = typeof errorValue === 'string' ? errorValue : (Array.isArray(errorValue) ? errorValue[0] : `Registration failed (status ${res.status})`);
+               }
+               else msg = data?.msg || `Registration failed (status ${res.status})`;
                setFormError(msg);
                setLoading(false);
                return;
@@ -278,7 +309,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
             setMode('login');
          } catch (err: any) {
             console.error('Registration error', err);
-            setFormError(err?.message || 'Network error during registration');
+            const errMsg = typeof err?.message === 'string' ? err.message : 'Network error during registration';
+            setFormError(errMsg);
             setLoading(false);
          }
 

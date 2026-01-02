@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect } from 'react';
+import React, { useRef, useCallback, useEffect, useState } from 'react';
 import ReCAPTCHA from 'react-google-recaptcha';
 
 interface RecaptchaFieldProps {
@@ -16,6 +16,7 @@ export const RecaptchaField: React.FC<RecaptchaFieldProps> = ({
 }) => {
   const recaptchaRef = useRef<ReCAPTCHA>(null);
   const isDev = (import.meta as any)?.env?.VITE_DEBUG === 'true' || process.env.NODE_ENV === 'development';
+  const [renderError, setRenderError] = useState<string | null>(null);
 
   // Dev warning if site key is missing
   useEffect(() => {
@@ -28,6 +29,7 @@ export const RecaptchaField: React.FC<RecaptchaFieldProps> = ({
     if (isDev) {
       console.log('reCAPTCHA token:', token ? '✓ received' : '✗ none');
     }
+    setRenderError(null);
     onToken(token);
   }, [onToken, isDev]);
 
@@ -50,25 +52,36 @@ export const RecaptchaField: React.FC<RecaptchaFieldProps> = ({
     return null;
   }
 
-  return (
-    <div className="relative min-h-[80px] my-4 py-2 px-0">
-      <div className="flex justify-center items-center">
-        <ReCAPTCHA
-          ref={recaptchaRef}
-          sitekey={siteKey}
-          onChange={handleChange}
-          onExpired={handleExpired}
-          onErrored={() => {
-            if (isDev) console.error('reCAPTCHA: error callback');
-          }}
-          theme="light"
-          size="normal"
-          tabIndex={0}
-        />
+  try {
+    return (
+      <div className="relative min-h-[80px] my-4 py-2 px-0">
+        <div className="flex justify-center items-center">
+          <ReCAPTCHA
+            ref={recaptchaRef}
+            sitekey={siteKey}
+            onChange={handleChange}
+            onExpired={handleExpired}
+            onErrored={() => {
+              if (isDev) console.error('reCAPTCHA: error callback');
+              setRenderError('Failed to load reCAPTCHA. Please try again.');
+            }}
+            theme="light"
+            size="normal"
+            tabIndex={0}
+          />
+        </div>
+        {(error || renderError) && (
+          <div className="text-xs text-red-400 text-center mt-2">{error || renderError}</div>
+        )}
       </div>
-      {error && (
-        <div className="text-xs text-red-400 text-center mt-2">{error}</div>
-      )}
-    </div>
-  );
+    );
+  } catch (err: any) {
+    if (isDev) console.error('reCAPTCHA render error:', err);
+    setRenderError('reCAPTCHA is unavailable. Please try again later.');
+    return (
+      <div className="rounded-lg bg-yellow-500/20 border border-yellow-500/50 p-3 text-xs text-yellow-300 my-2">
+        ⚠️ reCAPTCHA temporarily unavailable
+      </div>
+    );
+  }
 };
