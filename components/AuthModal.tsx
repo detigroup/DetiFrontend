@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserProfile } from '../types';
-import { X, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Globe } from 'lucide-react';
+import { X, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Globe, User, Calendar } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { DobDatePicker } from './DobDatePicker';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -19,14 +20,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
    const [formError, setFormError] = useState<string | null>(null);
 
   // Form State
+   const [firstName, setFirstName] = useState('');
+   const [lastName, setLastName] = useState('');
+   const [birthDay, setBirthDay] = useState('');
    const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [country, setCountry] = useState('United Arab Emirates');
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [subscription, setSubscription] = useState(false);
+  const [isValidDob, setIsValidDob] = useState(false);
 
-   // Reset recaptcha state when modal is reopened (do NOT reset while typing password)
+   // Reset state when modal is reopened
    useEffect(() => {
       setRecaptchaChecked(false);
       setFormError(null);
+      setIsValidDob(false);
    }, [isOpen]);
 
   if (!isOpen) return null;
@@ -206,6 +214,49 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
 
            <form onSubmit={handleSubmit} className="space-y-4">
               
+              {/* Name Row - Only visible during Registration */}
+              {mode === 'register' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-deti-subtext uppercase ml-1">First Name <span className="text-red-400">*</span></label>
+                    <div className="relative group">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-deti-subtext group-focus-within:text-deti-primary transition-colors" />
+                      <input 
+                        type="text" 
+                        required
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm text-white focus:border-deti-primary outline-none transition-all"
+                        placeholder="John"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-deti-subtext uppercase ml-1">Surname <span className="text-red-400">*</span></label>
+                    <div className="relative group">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-deti-subtext group-focus-within:text-deti-primary transition-colors" />
+                      <input 
+                        type="text" 
+                        required
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm text-white focus:border-deti-primary outline-none transition-all"
+                        placeholder="Doe"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Date of Birth - Only visible during Registration */}
+              {mode === 'register' && (
+                <DobDatePicker
+                  value={birthDay}
+                  onChange={setBirthDay}
+                  onValidationChange={setIsValidDob}
+                />
+              )}
+
               {/* Country Selection - Only visible during Registration */}
               {mode === 'register' && (
                 <div className="space-y-1">
@@ -232,7 +283,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
               )}
 
               <div className="space-y-1">
-                 <label className="text-xs font-bold text-deti-subtext uppercase ml-1">{t('auth.emailAddress')}</label>
+                 <label className="text-xs font-bold text-deti-subtext uppercase ml-1">{t('auth.emailAddress')} <span className="text-red-400">*</span></label>
                  <div className="relative group">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-deti-subtext group-focus-within:text-deti-primary transition-colors" />
                     <input 
@@ -247,7 +298,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
               </div>
 
               <div className="space-y-1">
-                 <label className="text-xs font-bold text-deti-subtext uppercase ml-1">{t('auth.password')}</label>
+                 <label className="text-xs font-bold text-deti-subtext uppercase ml-1">{t('auth.password')} <span className="text-red-400">*</span></label>
                  <div className="relative group">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-deti-subtext group-focus-within:text-deti-primary transition-colors" />
                     <input 
@@ -266,9 +317,42 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                  </div>
-                         </div>
-                        {/* reCAPTCHA checkbox always visible in login mode */}
-                        {mode === 'login' && (
+              </div>
+
+              {/* Terms & Conditions checkbox - Only visible during Registration */}
+              {mode === 'register' && (
+                <div className="space-y-3 pt-2">
+                  <label className="flex items-start gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={agreeTerms}
+                      onChange={(e) => setAgreeTerms(e.target.checked)}
+                      className="w-4 h-4 mt-0.5 accent-deti-primary cursor-pointer"
+                    />
+                    <span className="text-sm text-deti-subtext leading-relaxed">
+                      I have read and agree to the{' '}
+                      <a href="#" className="text-deti-primary hover:text-deti-secondary font-medium transition-colors" onClick={(e) => e.preventDefault()}>Terms & Conditions</a>
+                      {' '}&{' '}
+                      <a href="#" className="text-deti-primary hover:text-deti-secondary font-medium transition-colors" onClick={(e) => e.preventDefault()}>Privacy Policy</a>
+                    </span>
+                  </label>
+
+                  <label className="flex items-start gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={subscription}
+                      onChange={(e) => setSubscription(e.target.checked)}
+                      className="w-4 h-4 mt-0.5 accent-deti-primary cursor-pointer"
+                    />
+                    <span className="text-sm text-deti-subtext leading-relaxed">
+                      Subscribe to our Newsletter
+                    </span>
+                  </label>
+                </div>
+              )}
+
+              {/* reCAPTCHA checkbox always visible in login mode */}
+              {mode === 'login' && (
                            <div className="mt-3 flex items-center gap-3">
                               <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
                                  <input
@@ -288,8 +372,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
 
                        <button 
                          type="submit" 
-                         disabled={loading || (mode === 'login' && !recaptchaChecked)}
-                         className="w-full py-3 bg-gradient-brand text-white rounded-xl font-bold shadow-glow hover:shadow-glow-gold transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-2"
+                         disabled={loading || (mode === 'login' && !recaptchaChecked) || (mode === 'register' && (!agreeTerms || !isValidDob))}
+                         className="w-full py-3 bg-gradient-brand text-white rounded-xl font-bold shadow-glow hover:shadow-glow-gold transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
                        >
                           {loading ? <Loader2 className="animate-spin w-5 h-5" /> : (
                              <>
