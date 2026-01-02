@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserProfile } from '../types';
-import { X, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Globe, User, Calendar } from 'lucide-react';
+import { X, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Globe, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { DobDatePicker } from './DobDatePicker';
-import { RobotCheckbox } from './RobotCheckbox';
+import { RecaptchaField } from './RecaptchaField';
 
 // Country name to ISO code mapping
 const COUNTRY_CODES: Record<string, string> = {
@@ -31,7 +31,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [isRobotChecked, setIsRobotChecked] = useState(false);
+   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+   const [captchaError, setCaptchaError] = useState<string | null>(null);
+
+   const recaptchaSiteKey = ((import.meta as any)?.env?.VITE_RECAPTCHA_SITE_KEY) || '6Ld3ZREsAAAAAFcoDEP3w6yJug9y7cT9NTkyt_jT';
 
   // Form State
   const [firstName, setFirstName] = useState('');
@@ -48,7 +51,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
   useEffect(() => {
     setFormError(null);
     setIsValidDob(false);
-    setIsRobotChecked(false);
+      setCaptchaToken(null);
+      setCaptchaError(null);
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -153,6 +157,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
 
       // Registration / API call
       if (mode === 'register') {
+         if (!captchaToken) {
+            setCaptchaError('Please complete the reCAPTCHA check.');
+            setFormError('Please complete the reCAPTCHA check.');
+            setLoading(false);
+            return;
+         }
          // Format birth_day to ISO string with time: YYYY-MM-DDTHH:MM:SS.SSSZ
          const birthDateTime = new Date(birthDay);
          birthDateTime.setHours(0, 0, 0, 0);
@@ -176,7 +186,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
             birth_day: birthDayISO,
             country: countryCode,
             lang: currentLang,
-            subscription: subscription
+            subscription: subscription,
+            captcha: captchaToken
          };
 
          // Dev logging
@@ -432,15 +443,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                  </div>
               </div>
 
-              {/* Mock reCAPTCHA Checkbox - AFTER PASSWORD, BEFORE TERMS */}
-              {mode === 'register' && (
-                <div className="my-3">
-                  <RobotCheckbox 
-                    checked={isRobotChecked}
-                    onChange={setIsRobotChecked}
-                  />
-                </div>
-              )}
+                     {/* Google reCAPTCHA - AFTER PASSWORD, BEFORE TERMS */}
+                     {mode === 'register' && (
+                        <div className="my-3">
+                           <RecaptchaField
+                              siteKey={recaptchaSiteKey}
+                              onToken={(token) => {
+                                 setCaptchaToken(token);
+                                 setCaptchaError(null);
+                              }}
+                              error={captchaError || undefined}
+                           />
+                        </div>
+                     )}
 
               {/* Terms & Conditions checkbox - Only visible during Registration */}
               {mode === 'register' && (
@@ -480,7 +495,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
 
                        <button 
                          type="submit" 
-                         disabled={loading || (mode === 'register' && (!agreeTerms || !isValidDob))}
+                         disabled={loading || (mode === 'register' && (!agreeTerms || !isValidDob || !captchaToken))}
                          className="w-full py-3 bg-gradient-brand text-white rounded-xl font-bold shadow-glow hover:shadow-glow-gold transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
                        >
                           {loading ? <Loader2 className="animate-spin w-5 h-5" /> : (

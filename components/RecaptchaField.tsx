@@ -61,7 +61,7 @@ export const RecaptchaField: React.FC<RecaptchaFieldProps> = ({
           onErrored={() => {
             if (isDev) console.error('reCAPTCHA: error callback');
           }}
-          theme="dark"
+          theme="light"
           size="normal"
           tabIndex={0}
         />
