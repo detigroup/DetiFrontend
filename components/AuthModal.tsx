@@ -4,6 +4,7 @@ import { UserProfile } from '../types';
 import { X, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Globe, User, Calendar } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { DobDatePicker } from './DobDatePicker';
+import { RobotCheckbox } from './RobotCheckbox';
 
 // Country name to ISO code mapping
 const COUNTRY_CODES: Record<string, string> = {
@@ -29,26 +30,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-   const [recaptchaChecked, setRecaptchaChecked] = useState(false);
-   const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isRobotChecked, setIsRobotChecked] = useState(false);
 
   // Form State
-   const [firstName, setFirstName] = useState('');
-   const [lastName, setLastName] = useState('');
-   const [birthDay, setBirthDay] = useState('');
-   const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [birthDay, setBirthDay] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [country, setCountry] = useState('United Arab Emirates');
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [subscription, setSubscription] = useState(false);
   const [isValidDob, setIsValidDob] = useState(false);
 
-   // Reset state when modal is reopened
-   useEffect(() => {
-      setRecaptchaChecked(false);
-      setFormError(null);
-      setIsValidDob(false);
-   }, [isOpen]);
+  // Reset state when modal is reopened
+  useEffect(() => {
+    setFormError(null);
+    setIsValidDob(false);
+    setIsRobotChecked(false);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -58,12 +59,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
       setLoading(true);
 
       if (mode === 'login') {
-         if (!recaptchaChecked) {
-            setFormError(t('auth.recaptchaRequired'));
-            setLoading(false);
-            return;
-         }
-
          try {
             const domain = ((import.meta as any)?.env?.VITE_API_DOMAIN) || 'https://detidex.yeuthich.net';
             const apiPath = ((import.meta as any)?.env?.VITE_LOGIN_API) || '/api/v1/auth/login/';
@@ -71,7 +66,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
 
             const payload: Record<string, any> = {
                password,
-               recaptcha: recaptchaChecked,
                email,
             };
 
@@ -182,8 +176,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
             birth_day: birthDayISO,
             country: countryCode,
             lang: currentLang,
-            subscription: subscription,
-            recaptcha: true
+            subscription: subscription
          };
 
          // Dev logging
@@ -305,10 +298,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose}></div>
 
       {/* Modal Content with glassmorphism */}
-      <div dir={direction} lang={i18n.language} className="relative bg-[#181920]/90 backdrop-blur-xl border border-white/10 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+      <div dir={direction} lang={i18n.language} className="relative bg-[#181920]/90 backdrop-blur-xl border border-white/10 w-full max-w-md rounded-3xl shadow-2xl overflow-y-auto max-h-[90vh] animate-in zoom-in-95 duration-200">
         
         {/* Header Image/Banner - Updated Background for Contrast */}
-        <div className="h-32 bg-[#111218] relative overflow-hidden border-b border-white/5">
+        <div className="h-32 bg-[#111218] relative overflow-hidden border-b border-white/5 flex-shrink-0">
            {/* Subtle mesh to keep it premium but dark */}
            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-deti-primary/20 via-[#111218] to-[#111218]"></div>
            <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-deti-primary/10 rounded-full blur-3xl"></div>
@@ -439,6 +432,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                  </div>
               </div>
 
+              {/* Mock reCAPTCHA Checkbox - AFTER PASSWORD, BEFORE TERMS */}
+              {mode === 'register' && (
+                <div className="my-3">
+                  <RobotCheckbox 
+                    checked={isRobotChecked}
+                    onChange={setIsRobotChecked}
+                  />
+                </div>
+              )}
+
               {/* Terms & Conditions checkbox - Only visible during Registration */}
               {mode === 'register' && (
                 <div className="space-y-3 pt-2">
@@ -471,28 +474,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                 </div>
               )}
 
-              {/* reCAPTCHA checkbox always visible in login mode */}
-              {mode === 'login' && (
-                           <div className="mt-3 flex items-center gap-3">
-                              <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                                 <input
-                                    type="checkbox"
-                                    checked={recaptchaChecked}
-                                    onChange={(e) => setRecaptchaChecked(e.target.checked)}
-                                    className="w-4 h-4 accent-deti-primary"
-                                 />
-                                 <span className="font-medium select-none">{t('auth.imNotRobot')}</span>
-                              </label>
-                           </div>
-                        )}
-
-                       {formError && (
-                          <div className="mt-2 text-xs text-red-400">{formError}</div>
-                       )}
+              {formError && (
+                 <div className="mt-2 text-xs text-red-400">{formError}</div>
+              )}
 
                        <button 
                          type="submit" 
-                         disabled={loading || (mode === 'login' && !recaptchaChecked) || (mode === 'register' && (!agreeTerms || !isValidDob))}
+                         disabled={loading || (mode === 'register' && (!agreeTerms || !isValidDob))}
                          className="w-full py-3 bg-gradient-brand text-white rounded-xl font-bold shadow-glow hover:shadow-glow-gold transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
                        >
                           {loading ? <Loader2 className="animate-spin w-5 h-5" /> : (
