@@ -5,6 +5,19 @@ import { X, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Globe, User, Calendar 
 import { useTranslation } from 'react-i18next';
 import { DobDatePicker } from './DobDatePicker';
 
+// Country name to ISO code mapping
+const COUNTRY_CODES: Record<string, string> = {
+  'United Arab Emirates': 'AE',
+  'United States': 'US',
+  'United Kingdom': 'GB',
+  'Vietnam': 'VN',
+  'Singapore': 'SG',
+  'Germany': 'DE',
+  'Japan': 'JP',
+  'Canada': 'CA',
+  'Other': 'XX'
+};
+
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -144,20 +157,127 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
          return;
       }
 
-      // Registration / fallback: keep mock behaviour
-      setTimeout(() => {
-         const mockUser: UserProfile = {
-            id: 'USR-' + Math.floor(Math.random() * 10000),
-            name: email ? email.split('@')[0] : 'User',
-            email,
-            kycStatus: 'Unverified',
-            tier: 0,
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`
+      // Registration / API call
+      if (mode === 'register') {
+         // Format birth_day to ISO string with time: YYYY-MM-DDTHH:MM:SS.SSSZ
+         const birthDateTime = new Date(birthDay);
+         birthDateTime.setHours(0, 0, 0, 0);
+         const birthDayISO = birthDateTime.toISOString();
+
+         // Get country code from country name
+         const countryCode = COUNTRY_CODES[country] || 'XX';
+
+         // Get current language from i18n
+         const currentLang = i18n.language || 'en';
+
+         // Build registration payload
+         const payload: Record<string, any> = {
+            first_name: firstName,
+            last_name: lastName,
+            email: email,
+            username: email,
+            password: password,
+            password1: password,
+            password2: password,
+            birth_day: birthDayISO,
+            country: countryCode,
+            lang: currentLang,
+            subscription: subscription,
+            recaptcha: true
          };
-         setLoading(false);
-         onLogin(mockUser);
-         onClose();
-      }, 1500);
+
+         // Dev logging
+         if ((import.meta as any)?.env?.VITE_DEBUG === 'true') {
+            console.log('registration payload', payload);
+         }
+
+         try {
+            const domain = ((import.meta as any)?.env?.VITE_API_DOMAIN) || 'https://detidex.yeuthich.net';
+            const apiPath = '/api/v1/auth/registration/';
+            const url = `${domain.replace(/\/$/, '')}${apiPath}`;
+
+            const res = await fetch(url, {
+               method: 'POST',
+               headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json'
+               },
+               body: JSON.stringify(payload)
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+               const msg = data?.message || data?.error || data?.detail || `Registration failed (status ${res.status})`;
+               setFormError(msg);
+               setLoading(false);
+               return;
+            }
+
+            // Success: show success message, then redirect or close modal
+            setLoading(false);
+            
+            // Optional: persist tokens if returned
+            const setCookie = (name: string, value: string, opts: { maxAge?: number, domain?: string, secure?: boolean, sameSite?: 'Lax'|'Strict'|'None' } = {}) => {
+               try {
+                  const secure = opts.secure ?? (window.location.protocol === 'https:');
+                  let cookie = `${name}=${encodeURIComponent(value)}; path=/;`;
+                  if (opts.maxAge) cookie += ` max-age=${opts.maxAge};`;
+                  if (opts.domain) cookie += ` domain=${opts.domain};`;
+                  if (secure) cookie += ' Secure;';
+                  cookie += ` SameSite=${opts.sameSite ?? 'Lax'};`;
+                  document.cookie = cookie;
+               } catch (e) {
+                  // eslint-disable-next-line no-console
+                  console.warn('Unable to set cookie', name, e);
+               }
+            };
+
+            const cookieSource: any = data.cookies || data.tokens || data || {};
+            const cookieKeys = ['jwt','jwt_auth_token','jwt_refresh_token','sessionid','lang','messages'];
+            cookieKeys.forEach((k) => {
+               const v = cookieSource[k] ?? cookieSource?.[k];
+               if (v) {
+                  setCookie(k, String(v), { maxAge: 60 * 60 * 24 * 30 });
+                  try { localStorage.setItem(k, String(v)); } catch {}
+               }
+            });
+
+            const primaryToken = cookieSource.token || cookieSource.access || cookieSource.access_token || cookieSource.jwt || cookieSource.jwt_auth_token || '';
+            if (primaryToken) {
+               try {
+                  localStorage.setItem('jwt', String(primaryToken));
+                  localStorage.setItem('token', String(primaryToken));
+                  localStorage.setItem('jwt_auth_token', String(primaryToken));
+                  setCookie('jwt_front', String(primaryToken), { maxAge: 60 * 60 * 24 * 30 });
+               } catch (e) {
+                  // eslint-disable-next-line no-console
+                  console.warn('Unable to persist primary token', e);
+               }
+            }
+
+            // Create user profile from response
+            const userRaw = data.user || data.data || data.profile || data;
+            const mapped: UserProfile = {
+               id: userRaw?.id?.toString() || userRaw?.uuid || 'USR-' + Math.floor(Math.random() * 10000),
+               name: userRaw?.name || userRaw?.username || firstName + ' ' + lastName,
+               email: userRaw?.email || email,
+               phone: userRaw?.phone,
+               kycStatus: userRaw?.kycStatus || userRaw?.kyc_status || 'Unverified',
+               tier: userRaw?.tier ?? 0,
+               avatar: userRaw?.avatar || userRaw?.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`
+            };
+
+            onLogin(mapped);
+            onClose();
+         } catch (err: any) {
+            console.error('Registration error', err);
+            setFormError(err?.message || 'Network error during registration');
+            setLoading(false);
+         }
+
+         return;
+      }
    };
 
   const handleGoogleLogin = () => {
