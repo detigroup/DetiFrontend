@@ -187,7 +187,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
             country: countryCode,
             lang: currentLang,
             subscription: subscription,
-            captcha: captchaToken
+            captcha: captchaToken,
+            captchaResponse: captchaToken
          };
 
          // Dev logging
