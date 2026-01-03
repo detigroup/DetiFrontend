@@ -2,9 +2,9 @@ name: Deploy develop via SSH
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, master, develop, dev ]
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [ main, master, develop, dev ]
 jobs:
   deploy:
     runs-on: ubuntu-latest
