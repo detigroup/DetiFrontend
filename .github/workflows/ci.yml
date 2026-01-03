@@ -22,4 +22,4 @@ jobs:
             cd /app/DetiFrontend
             git checkout dev
             git pull
-            pkill -f '/app/DetiFrontend/node_modules/.bin/vite'
+            sudo pkill -f '/app/DetiFrontend/node_modules/.bin/vite'
