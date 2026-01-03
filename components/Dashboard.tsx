@@ -268,106 +268,149 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({
            
            <div className="relative bg-[#181920] border border-deti-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 brand-lighting-box">
               
-              {/* Modal Header with Asset Selector (Simplified to Dropdown for this version) */}
+              {/* Modal Header with Title */}
               <div className="flex justify-between items-center p-5 border-b border-deti-border bg-deti-card">
                  <div className="flex items-center gap-2">
                      <h3 className="text-lg font-bold text-white flex items-center gap-2">
                         {modalType === 'deposit' ? <ArrowDownLeft className="text-deti-success" /> : <ArrowUpRight className="text-deti-danger" />}
                         {modalType === 'deposit' ? 'Deposit' : 'Withdraw'}
                      </h3>
-                     {/* Simple Asset Switcher */}
-                     <div className="relative group">
-                         <button className="flex items-center gap-1 bg-deti-surface px-2 py-1 rounded text-sm font-bold text-white hover:bg-white/10">
-                            {selectedAsset.symbol} <ChevronDown size={14} />
-                         </button>
-                         <div className="absolute top-full left-0 mt-1 w-32 bg-deti-card border border-deti-border rounded-lg shadow-xl overflow-hidden hidden group-hover:block z-50">
-                             {assets.map(a => (
-                                <button key={a.symbol} onClick={() => setSelectedAsset(a)} className="w-full text-left px-3 py-2 hover:bg-white/10 text-xs text-white">
-                                   {a.symbol}
-                                </button>
-                             ))}
-                         </div>
-                     </div>
                  </div>
                  <button onClick={closeModal} className="text-deti-subtext hover:text-white transition-colors"><X size={20} /></button>
               </div>
 
-              {/* Deposit Content */}
+              {/* Deposit Content with Step Numbers */}
               {modalType === 'deposit' && (
-                 <div className="p-6 space-y-6">
-                    {/* Network Selection */}
-                    <div className="space-y-2">
-                       <label className="text-xs font-bold text-deti-subtext uppercase">Select Network</label>
-                       <div className="grid grid-cols-2 gap-3">
-                          {COIN_NETWORKS[selectedAsset.symbol]?.map(net => (
-                             <button 
-                                key={net.id}
-                                onClick={() => setSelectedNetwork(net)}
-                                className={`p-3 rounded-xl border text-left transition-all ${selectedNetwork?.id === net.id ? 'border-deti-primary bg-deti-primary/10' : 'border-deti-border bg-deti-bg hover:border-deti-subtext'}`}
+                 <div className="p-6 space-y-8">
+                    {/* Step 1: Select Coin */}
+                    <div className="flex gap-4">
+                       <div className="flex flex-col items-center">
+                          <div className="w-10 h-10 rounded-full bg-deti-primary text-white flex items-center justify-center font-bold text-sm">1</div>
+                          <div className="w-1 h-16 bg-gradient-to-b from-deti-primary to-gray-600 mt-2"></div>
+                       </div>
+                       <div className="flex-1 pt-1">
+                          <h4 className="text-lg font-bold text-white mb-3">Select Coin</h4>
+                          <div className="relative">
+                             <div className="flex items-center gap-3 bg-deti-surface border border-deti-border rounded-2xl px-4 py-3 cursor-pointer hover:border-deti-primary transition-all">
+                                {/* Coin Icon */}
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-deti-primary to-deti-secondary flex items-center justify-center text-white font-bold text-sm">
+                                   {selectedAsset.symbol[0]}
+                                </div>
+                                <div className="flex-1">
+                                   <div className="font-bold text-white">{selectedAsset.symbol}</div>
+                                   <div className="text-xs text-deti-subtext">{selectedAsset.name}</div>
+                                </div>
+                                <ChevronDown size={20} className="text-deti-subtext" />
+                             </div>
+                             {/* Hidden select for functionality */}
+                             <select 
+                                value={selectedAsset.symbol}
+                                onChange={(e) => {
+                                   const asset = assets.find(a => a.symbol === e.target.value);
+                                   if (asset) setSelectedAsset(asset);
+                                }}
+                                className="absolute inset-0 opacity-0 cursor-pointer"
                              >
-                                <div className="font-bold text-sm text-white">{net.standard}</div>
-                                <div className="text-xs text-deti-subtext mt-1">{net.name}</div>
-                                <div className="text-[10px] text-deti-success mt-1">Arrival: {net.arrivalTime}</div>
-                             </button>
-                          ))}
-                          {!COIN_NETWORKS[selectedAsset.symbol] && <div className="text-sm text-gray-500 col-span-2">No networks available.</div>}
+                                {assets.map(a => (
+                                   <option key={a.symbol} value={a.symbol}>
+                                      {a.symbol}
+                                   </option>
+                                ))}
+                             </select>
+                          </div>
                        </div>
                     </div>
 
-                    {/* Address View */}
-                    {selectedNetwork ? (
-                       currentAddress ? (
-                          <div className="space-y-4 animate-in slide-in-from-bottom-2">
-                             <div className="bg-white p-4 rounded-xl mx-auto w-fit">
-                                <QrCode className="w-32 h-32 text-black" />
-                             </div>
-                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-deti-subtext uppercase">Deposit Address</label>
-                                <div className="flex gap-2">
-                                   <div className="flex-1 bg-deti-bg border border-deti-border rounded-xl p-3 text-sm font-mono text-gray-300 break-all">
-                                      {currentAddress}
+                    {/* Step 2: Select Network */}
+                    <div className="flex gap-4">
+                       <div className="flex flex-col items-center">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${selectedNetwork ? 'bg-deti-primary text-white' : 'bg-gray-600 text-gray-400'}`}>2</div>
+                          <div className={`w-1 h-16 mt-2 ${selectedNetwork ? 'bg-gradient-to-b from-deti-primary to-gray-600' : 'bg-gray-600'}`}></div>
+                       </div>
+                       <div className="flex-1 pt-1">
+                          <h4 className="text-lg font-bold text-white mb-3">Select Network</h4>
+                          <div className="relative">
+                             <select 
+                                value={selectedNetwork?.id || ''}
+                                onChange={(e) => {
+                                   const net = COIN_NETWORKS[selectedAsset.symbol]?.find(n => n.id === e.target.value);
+                                   if (net) setSelectedNetwork(net);
+                                }}
+                                className="w-full bg-deti-surface border border-deti-border rounded-2xl px-4 py-3 text-white font-semibold appearance-none cursor-pointer hover:border-deti-primary focus:border-deti-primary outline-none transition-all"
+                             >
+                                <option value="" className="text-gray-400">Select network</option>
+                                {COIN_NETWORKS[selectedAsset.symbol]?.map(net => (
+                                   <option key={net.id} value={net.id}>
+                                      {net.standard} Address
+                                   </option>
+                                ))}
+                             </select>
+                             <ChevronDown size={20} className="absolute right-3 top-1/2 -translate-y-1/2 text-deti-subtext pointer-events-none" />
+                          </div>
+                       </div>
+                    </div>
+
+                    {/* Step 3: Deposit Address */}
+                    <div className="flex gap-4">
+                       <div className="flex flex-col items-center">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${selectedNetwork && currentAddress ? 'bg-deti-primary text-white' : 'bg-gray-600 text-gray-400'}`}>3</div>
+                       </div>
+                       <div className="flex-1 pt-1">
+                          <h4 className="text-lg font-bold text-white mb-3">Deposit Address</h4>
+                          {selectedNetwork ? (
+                             currentAddress ? (
+                                <div className="space-y-4 animate-in slide-in-from-bottom-2">
+                                   <div className="bg-white p-4 rounded-xl mx-auto w-fit">
+                                      <QrCode className="w-32 h-32 text-black" />
+                                   </div>
+                                   <div className="space-y-2">
+                                      <div className="flex gap-2">
+                                         <div className="flex-1 bg-deti-bg border border-deti-border rounded-xl p-3 text-sm font-mono text-gray-300 break-all">
+                                            {currentAddress}
+                                         </div>
+                                         <button 
+                                            onClick={() => handleCopy(currentAddress)}
+                                            className="p-3 bg-deti-card hover:bg-deti-border border border-deti-border rounded-xl text-white transition-colors"
+                                         >
+                                            {copied ? <CheckCircle2 className="text-deti-success" /> : <Copy />}
+                                         </button>
+                                      </div>
+                                      <div className="flex items-start gap-2 text-xs text-orange-400 bg-orange-400/10 p-3 rounded-lg">
+                                         <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                                         <p>Send only {selectedAsset.symbol} ({selectedNetwork.standard}) to this address.</p>
+                                      </div>
+                                      <button 
+                                         onClick={handleSimulateDeposit}
+                                         disabled={loading}
+                                         className="w-full mt-4 py-2 bg-deti-bg border border-deti-border hover:bg-deti-primary/10 hover:border-deti-primary hover:text-deti-primary text-deti-subtext rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all"
+                                      >
+                                         <RefreshCcw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                                         {loading ? 'Confirming...' : 'Simulate Deposit (Demo)'}
+                                      </button>
+                                   </div>
+                                </div>
+                             ) : (
+                                <div className="py-6 text-center space-y-4 animate-in zoom-in-95">
+                                   <div className="w-12 h-12 mx-auto bg-deti-surface rounded-full flex items-center justify-center border border-deti-border">
+                                      <Server className="w-6 h-6 text-deti-subtext" />
                                    </div>
                                    <button 
-                                      onClick={() => handleCopy(currentAddress)}
-                                      className="p-3 bg-deti-card hover:bg-deti-border border border-deti-border rounded-xl text-white transition-colors"
+                                     onClick={handleGenerateAddressClick}
+                                     disabled={isGeneratingAddress}
+                                     className="px-4 py-2 bg-deti-primary hover:bg-deti-primary/80 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
                                    >
-                                      {copied ? <CheckCircle2 className="text-deti-success" /> : <Copy />}
+                                     {isGeneratingAddress ? 'Generating...' : 'Generate Address'}
                                    </button>
                                 </div>
-                                <div className="flex items-start gap-2 text-xs text-orange-400 bg-orange-400/10 p-3 rounded-lg mt-2">
-                                   <AlertCircle size={14} className="mt-0.5 shrink-0" />
-                                   <p>Send only {selectedAsset.symbol} ({selectedNetwork.standard}) to this address.</p>
-                                </div>
-                                <button 
-                                   onClick={handleSimulateDeposit}
-                                   disabled={loading}
-                                   className="w-full mt-4 py-2 bg-deti-bg border border-deti-border hover:bg-deti-primary/10 hover:border-deti-primary hover:text-deti-primary text-deti-subtext rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all"
-                                >
-                                   <RefreshCcw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-                                   {loading ? 'Confirming...' : 'Simulate Deposit (Demo)'}
-                                </button>
+                             )
+                          ) : (
+                             <div className="text-center text-gray-500 text-sm py-8">
+                                <Lock size={24} className="mx-auto mb-2 text-gray-600" />
+                                <p>Select a network first</p>
                              </div>
-                          </div>
-                       ) : (
-                          <div className="py-8 text-center space-y-6 animate-in zoom-in-95">
-                             <div className="w-16 h-16 mx-auto bg-deti-surface rounded-full flex items-center justify-center border border-deti-border">
-                                <Server className="w-8 h-8 text-deti-subtext" />
-                             </div>
-                             <button 
-                               onClick={handleGenerateAddressClick}
-                               disabled={isGeneratingAddress}
-                               className="w-full py-3.5 bg-gradient-brand text-white rounded-xl font-bold shadow-glow hover:shadow-glow-gold hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
-                             >
-                                {isGeneratingAddress ? <RefreshCcw className="animate-spin w-5 h-5" /> : `Generate ${selectedNetwork.standard} Address`}
-                             </button>
-                          </div>
-                       )
-                    ) : (
-                       <div className="text-center py-8 text-deti-subtext border-2 border-dashed border-deti-border rounded-xl flex flex-col items-center gap-2">
-                          <Lock className="w-8 h-8 opacity-50" />
-                          <span>Select a network</span>
+                          )}
                        </div>
-                    )}
+                    </div>
                  </div>
               )}
 
