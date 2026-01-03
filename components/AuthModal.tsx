@@ -80,6 +80,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
             const payload: Record<string, any> = {
                password,
                email,
+               captchaResponse: captchaToken || lastCaptchaToken,
             };
 
             const res = await fetch(url, {
@@ -612,18 +613,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
               </div>
 
                      {/* Google reCAPTCHA - AFTER PASSWORD, BEFORE TERMS */}
-                     {mode === 'register' && (
-                        <div className="my-3">
-                           <RecaptchaField
-                              siteKey={recaptchaSiteKey}
-                              onToken={(token) => {
-                                 setCaptchaToken(token);
-                                 setCaptchaError(null);
-                              }}
-                              error={captchaError || undefined}
-                           />
-                        </div>
-                     )}
+                     <div className="my-3">
+                        <RecaptchaField
+                           siteKey={recaptchaSiteKey}
+                           onToken={(token) => {
+                              setCaptchaToken(token);
+                              setLastCaptchaToken(token);
+                              setCaptchaError(null);
+                           }}
+                           error={captchaError || undefined}
+                        />
+                     </div>
 
               {/* Terms & Conditions checkbox - Only visible during Registration */}
               {mode === 'register' && (
@@ -663,7 +663,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
 
                        <button 
                          type="submit" 
-                         disabled={loading || (mode === 'register' && (!agreeTerms || !isValidDob || !captchaToken))}
+                         disabled={loading || !captchaToken || (mode === 'register' && (!agreeTerms || !isValidDob))}
                          className="w-full py-3 bg-gradient-brand text-white rounded-xl font-bold shadow-glow hover:shadow-glow-gold transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
                        >
                           {loading ? <Loader2 className="animate-spin w-5 h-5" /> : (
