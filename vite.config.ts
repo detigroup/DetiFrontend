@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
-        allowedHosts: ['dev.detidex.yeuthich.net'],
+        allowedHosts: ['dev.detidex.yeuthich.net','detihold.com', 'detidex.yeuthich.net'],
         https: httpsOptions,
         hmr: {
           host: 'dev.detidex.yeuthich.net',
