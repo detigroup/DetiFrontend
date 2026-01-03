@@ -5,6 +5,8 @@ import { X, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Globe, User } from 'lu
 import { useTranslation } from 'react-i18next';
 import { DobDatePicker } from './DobDatePicker';
 import { RecaptchaField } from './RecaptchaField';
+import { ConfirmEmailModal } from './ConfirmEmailModal';
+import { TwoFactorModal } from './TwoFactorModal';
 
 // Country name to ISO code mapping
 const COUNTRY_CODES: Record<string, string> = {
@@ -46,6 +48,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [subscription, setSubscription] = useState(false);
   const [isValidDob, setIsValidDob] = useState(false);
+  const [showConfirmEmailModal, setShowConfirmEmailModal] = useState(false);
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
+  const [show2FAModal, setShow2FAModal] = useState(false);
+  const [pendingLogin2FAEmail, setPendingLogin2FAEmail] = useState('');
+  const [lastCaptchaToken, setLastCaptchaToken] = useState<string | null>(null);
 
   // Reset state when modal is reopened
   useEffect(() => {
@@ -53,6 +60,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
     setIsValidDob(false);
       setCaptchaToken(null);
       setCaptchaError(null);
+      setShow2FAModal(false);
+      setLastCaptchaToken(null);
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -85,6 +94,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
             const data = await res.json().catch(() => ({}));
 
             if (!res.ok) {
+               // Check for 2FA required error (either by error_code or 403 status)
+               if (data?.error_code === '2fa_required' || res.status === 403) {
+                  setLoading(false);
+                  setPendingLogin2FAEmail(email);
+                  setLastCaptchaToken(captchaToken);
+                  setShow2FAModal(true);
+                  return;
+               }
+
                let msg = 'Login failed';
                // Try to extract error message from various response formats
                if (typeof data?.error === 'object' && Array.isArray(data.error) && data.error.length > 0) {
@@ -250,6 +268,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                return;
             }
 
+            // Check for 201 Created with verification email sent message
+            if (res.status === 201 && data?.detail?.includes('Verification e-mail sent')) {
+               setLoading(false);
+               setPendingVerificationEmail(email);
+               setShowConfirmEmailModal(true);
+               // Reset form for next use
+               setEmail('');
+               setPassword('');
+               setFirstName('');
+               setLastName('');
+               setFormError(null);
+               return;
+            }
+
             // Success: show success message, then redirect or close modal
             setLoading(false);
             
@@ -317,6 +349,108 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
          return;
       }
    };
+
+  const handle2FASubmit = async (code: string) => {
+    try {
+      setLoading(true);
+      const domain = ((import.meta as any)?.env?.VITE_API_DOMAIN) || 'https://detidex.yeuthich.net';
+      const apiPath = ((import.meta as any)?.env?.VITE_LOGIN_API) || '/api/v1/auth/login/';
+      const url = `${domain.replace(/\/$/, '')}${apiPath}`;
+
+      // Submit login again with 2FA code and previous captcha token
+      const payload: Record<string, any> = {
+        password,
+        email,
+        googlecode: code,
+        captcha: lastCaptchaToken,
+        captchaResponse: lastCaptchaToken
+      };
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        let msg = '2FA verification failed';
+        if (typeof data?.error === 'object' && Array.isArray(data.error) && data.error.length > 0) {
+          msg = typeof data.error[0]?.message === 'string' ? data.error[0].message : `2FA verification failed (status ${res.status})`;
+        }
+        else if (typeof data?.message === 'string') msg = data.message;
+        else if (typeof data?.error === 'string') msg = data.error;
+        else if (typeof data?.detail === 'string') msg = data.detail;
+        else if (typeof data?.errors === 'object' && data.errors !== null) {
+          const errorKey = Object.keys(data.errors)[0];
+          const errorValue = data.errors[errorKey];
+          msg = typeof errorValue === 'string' ? errorValue : `2FA verification failed (status ${res.status})`;
+        }
+        throw new Error(msg);
+      }
+
+      // Set cookies/tokens
+      const setCookie = (name: string, value: string, opts: { maxAge?: number, domain?: string, secure?: boolean, sameSite?: 'Lax'|'Strict'|'None' } = {}) => {
+        try {
+          const secure = opts.secure ?? (window.location.protocol === 'https:');
+          let cookie = `${name}=${encodeURIComponent(value)}; path=/;`;
+          if (opts.maxAge) cookie += ` max-age=${opts.maxAge};`;
+          if (opts.domain) cookie += ` domain=${opts.domain};`;
+          if (secure) cookie += ' Secure;';
+          cookie += ` SameSite=${opts.sameSite ?? 'Lax'};`;
+          document.cookie = cookie;
+        } catch (e) {
+          console.warn('Unable to set cookie', name, e);
+        }
+      };
+
+      const cookieSource: any = data.cookies || data.tokens || data || {};
+      const cookieKeys = ['jwt','jwt_auth_token','jwt_refresh_token','sessionid','lang','messages'];
+      cookieKeys.forEach((k) => {
+        const v = cookieSource[k] ?? cookieSource?.[k];
+        if (v) {
+          setCookie(k, String(v), { maxAge: 60 * 60 * 24 * 30 });
+          try { localStorage.setItem(k, String(v)); } catch {}
+        }
+      });
+
+      const primaryToken = cookieSource.token || cookieSource.access || cookieSource.access_token || cookieSource.jwt || cookieSource.jwt_auth_token || '';
+      if (primaryToken) {
+        try {
+          localStorage.setItem('jwt', String(primaryToken));
+          localStorage.setItem('token', String(primaryToken));
+          localStorage.setItem('jwt_auth_token', String(primaryToken));
+          setCookie('jwt_front', String(primaryToken), { maxAge: 60 * 60 * 24 * 30 });
+        } catch (e) {
+          console.warn('Unable to persist primary token', e);
+        }
+      }
+
+      // Create user profile
+      const userRaw = data.user || data.data || data.profile || data;
+      const mapped: UserProfile = {
+        id: userRaw?.id?.toString() || userRaw?.uuid || 'USR-' + Math.floor(Math.random() * 10000),
+        name: userRaw?.name || userRaw?.username || (email ? email.split('@')[0] : 'User'),
+        email: userRaw?.email || email,
+        phone: userRaw?.phone,
+        kycStatus: userRaw?.kycStatus || userRaw?.kyc_status || 'Unverified',
+        tier: userRaw?.tier ?? 0,
+        avatar: userRaw?.avatar || userRaw?.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`
+      };
+
+      setShow2FAModal(false);
+      setLoading(false);
+      onLogin(mapped);
+      onClose();
+    } catch (err: any) {
+      setLoading(false);
+      throw err;
+    }
+  };
 
   const handleGoogleLogin = () => {
     setLoading(true);
@@ -578,6 +712,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
         </div>
 
       </div>
+
+      {/* Confirm Email Modal */}
+      <ConfirmEmailModal
+        isOpen={showConfirmEmailModal}
+        onClose={() => setShowConfirmEmailModal(false)}
+        email={pendingVerificationEmail}
+        onConfirm={async (code) => {
+          // TODO: Call backend API to verify email code
+          console.log('Verifying email code:', code);
+          setShowConfirmEmailModal(false);
+        }}
+        onResendCode={async () => {
+          // TODO: Call backend API to resend verification code
+          console.log('Resending verification code to:', pendingVerificationEmail);
+        }}
+      />
+
+      {/* Two-Factor Authentication Modal */}
+      <TwoFactorModal
+        isOpen={show2FAModal}
+        onClose={() => setShow2FAModal(false)}
+        email={pendingLogin2FAEmail}
+        onSubmit={handle2FASubmit}
+        isLoading={loading}
+      />
     </div>
   );
 };
